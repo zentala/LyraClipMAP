@@ -35,27 +35,36 @@
 
 ### Prerequisites
 - Python 3.8+
-- Flask
-- SQLAlchemy
+- Python venv package (for virtual environment)
 
 ### Installation
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/LyraClipMAP.git
+git clone https://github.com/zentala/LyraClipMAP.git
 cd LyraClipMAP
 ```
 
-2. Install dependencies
+2. Set up a virtual environment
+```bash
+# On Ubuntu/Debian, you may need to first install:
+# sudo apt install python3-venv
+
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Run the application
+4. Run the application
 ```bash
 python -m app.main
 ```
 
-4. Open your browser and navigate to `http://localhost:8000`
+5. Open your browser and navigate to `http://localhost:8000`
 
 ## 🖼️ User Flow
 
@@ -92,4 +101,4 @@ python -m app.main
 ## 📧 Contact
 Your Name – [@yourhandle](https://twitter.com/yourhandle) – your.email@example.com
 
-Project Link: [https://github.com/yourusername/LyraClipMAP](https://github.com/yourusername/LyraClipMAP)
+Project Link: [https://github.com/zentala/LyraClipMAP](https://github.com/zentala/LyraClipMAP)
