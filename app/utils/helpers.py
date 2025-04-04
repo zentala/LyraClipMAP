@@ -7,7 +7,7 @@ from typing import Optional, Dict, Tuple
 def extract_youtube_info(url: str) -> Dict[str, str]:
     """
     Extract video ID and other info from YouTube URL
-    Returns dict with 'video_id', 'title' (if available)
+    Returns dict with video details
     """
     # Extract video ID from different YouTube URL formats
     parsed_url = urlparse(url)
@@ -25,22 +25,69 @@ def extract_youtube_info(url: str) -> Dict[str, str]:
     if not video_id:
         raise ValueError("Invalid YouTube URL")
     
-    # Try to fetch video info
+    # Try to use oembed endpoint to get structured data (no API key needed)
+    # This is one of the most reliable methods without using the official API
     try:
-        # Define headers to avoid being blocked
+        oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         
+        oembed_response = requests.get(oembed_url, headers=headers)
+        if oembed_response.status_code == 200:
+            oembed_data = oembed_response.json()
+            title = oembed_data.get('title')
+            channel_name = oembed_data.get('author_name')
+            thumbnail = f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg"  # High quality thumbnail
+            
+            # Extract artist and song title using the format_youtube_title function
+            artist, song_title = format_youtube_title(title) if title else ("Unknown Artist", "Unknown Title")
+            
+            # Get description using video info endpoint
+            try:
+                info_url = f"https://www.youtube.com/get_video_info?video_id={video_id}"
+                info_response = requests.get(info_url, headers=headers)
+                if info_response.status_code == 200:
+                    from urllib.parse import parse_qs
+                    info_data = parse_qs(info_response.text)
+                    # Extract description if available
+                    if 'player_response' in info_data:
+                        import json
+                        player_response = json.loads(info_data['player_response'][0])
+                        video_details = player_response.get('videoDetails', {})
+                        description = video_details.get('shortDescription', '')
+                    else:
+                        description = ""
+                else:
+                    description = ""
+            except:
+                description = ""
+            
+            return {
+                'video_id': video_id,
+                'title': title,
+                'description': description,
+                'thumbnail': thumbnail,
+                'channel_name': channel_name,
+                'artist': artist,
+                'song_title': song_title
+            }
+    
+    except Exception as e:
+        print(f"Error fetching from oembed: {e}")
+    
+    # Fallback: Try to scrape the info from the page if oembed fails
+    try:
         # Get YouTube page content
-        response = requests.get(f"https://www.youtube.com/watch?v={video_id}", headers=headers)
+        response = requests.get(f"https://www.youtube.com/watch?v={video_id}", headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        })
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Extract information
-        # Title is usually in the title tag, wrapped with " - YouTube" at the end
+        # Extract title (usually in the title tag)
         title = soup.find('title').text.replace(' - YouTube', '').strip() if soup.find('title') else None
         
-        # Extract metadata
+        # Extract metadata from meta tags
         meta_tags = soup.find_all('meta')
         description = None
         thumbnail = None
@@ -57,6 +104,18 @@ def extract_youtube_info(url: str) -> Dict[str, str]:
         # Extract artist and song title using the format_youtube_title function
         artist, song_title = format_youtube_title(title) if title else ("Unknown Artist", "Unknown Title")
         
+        # Try to extract channel name from JSON-LD data
+        script_tags = soup.find_all('script', {'type': 'application/ld+json'})
+        for script in script_tags:
+            try:
+                import json
+                data = json.loads(script.string)
+                if isinstance(data, dict) and 'author' in data:
+                    if isinstance(data['author'], dict) and 'name' in data['author']:
+                        channel_name = data['author']['name']
+            except:
+                pass
+        
         # Return all gathered information
         return {
             'video_id': video_id,
@@ -70,7 +129,12 @@ def extract_youtube_info(url: str) -> Dict[str, str]:
     except Exception as e:
         print(f"Error fetching YouTube info: {e}")
         # Return just the video ID if we couldn't fetch additional info
-        return {'video_id': video_id}
+        return {
+            'video_id': video_id,
+            'title': "Unknown Title",
+            'channel_name': "Unknown Channel",
+            'thumbnail': f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"
+        }
 
 def get_youtube_embed_html(video_id: str) -> str:
     """Generate YouTube embed HTML code"""
