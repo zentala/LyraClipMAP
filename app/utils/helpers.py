@@ -1,6 +1,6 @@
 import re
 import requests
-from urllib.parse import urlparse, parse_qs
+import urllib.parse
 from bs4 import BeautifulSoup
 from typing import Optional, Dict, Tuple
 
@@ -10,12 +10,12 @@ def extract_youtube_info(url: str) -> Dict[str, str]:
     Returns dict with video details
     """
     # Extract video ID from different YouTube URL formats
-    parsed_url = urlparse(url)
+    parsed_url = urllib.parse.urlparse(url)
     video_id = None
     
     if parsed_url.hostname in ('www.youtube.com', 'youtube.com'):
         if parsed_url.path == '/watch':
-            query = parse_qs(parsed_url.query)
+            query = urllib.parse.parse_qs(parsed_url.query)
             if 'v' in query:
                 video_id = query['v'][0]
                 # Remove any additional parameters if present
@@ -61,8 +61,7 @@ def extract_youtube_info(url: str) -> Dict[str, str]:
                 info_url = f"https://www.youtube.com/get_video_info?video_id={video_id}"
                 info_response = requests.get(info_url, headers=headers)
                 if info_response.status_code == 200:
-                    from urllib.parse import parse_qs
-                    info_data = parse_qs(info_response.text)
+                    info_data = urllib.parse.parse_qs(info_response.text)
                     # Extract description if available
                     if 'player_response' in info_data:
                         import json
