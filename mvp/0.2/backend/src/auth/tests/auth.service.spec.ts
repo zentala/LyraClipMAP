@@ -7,11 +7,11 @@ import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { UserAlreadyExistsException, InvalidCredentialsException } from '../exceptions/auth.exceptions';
 import { UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
-jest.mock('bcrypt', () => ({
+jest.mock('bcryptjs', () => ({
   hash: jest.fn().mockResolvedValue('hashedPassword'),
-  compare: jest.fn(),
+  compare: jest.fn().mockResolvedValue(true),
 }));
 
 describe('AuthService', () => {
