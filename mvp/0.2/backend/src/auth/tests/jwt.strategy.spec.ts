@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/test';
+import { Test, TestingModule } from '@nestjs/testing';
 import { JwtStrategy } from '../strategies/jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 
@@ -7,7 +7,7 @@ describe('JwtStrategy', () => {
   let configService: ConfigService;
 
   const mockConfigService = {
-    get: jest.fn(),
+    get: jest.fn().mockReturnValue('test-secret'),
   };
 
   beforeEach(async () => {
@@ -30,14 +30,9 @@ describe('JwtStrategy', () => {
   });
 
   describe('validate', () => {
-    it('should return user payload', async () => {
-      const payload = {
-        sub: 1,
-        email: 'test@example.com',
-      };
-
+    it('should return user payload with id instead of sub', async () => {
+      const payload = { sub: 1, email: 'test@example.com' };
       const result = await strategy.validate(payload);
-
       expect(result).toEqual({
         id: payload.sub,
         email: payload.email,

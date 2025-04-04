@@ -1,8 +1,15 @@
-import { Test, TestingModule } from '@nestjs/test';
+import { Test, TestingModule } from '@nestjs/testing';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '../guards/auth.guard';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+
+interface MockRequest {
+  headers: {
+    [key: string]: string;
+  };
+  user?: any;
+}
 
 describe('AuthGuard', () => {
   let guard: AuthGuard;
@@ -43,7 +50,7 @@ describe('AuthGuard', () => {
 
   describe('canActivate', () => {
     let mockContext: ExecutionContext;
-    const mockRequest = {
+    const mockRequest: MockRequest = {
       headers: {},
     };
 

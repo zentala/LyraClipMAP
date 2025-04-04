@@ -22,6 +22,7 @@ model User {
   likedSongs    SongLike[]
   likedArtists  ArtistLike[]
   preferences   UserPreference?
+  uploads       FileUpload[]
 }
 
 model UserPreference {
@@ -72,6 +73,11 @@ model Song {
   wordTimestamps WordTimestamp[]
   playlists      PlaylistSong[]
   tags           SongTag[]
+  clips          Clip[]
+  visualizations Visualization[]
+  spotifyId      String?       // Spotify track ID
+  spotifyData    Json?         // Additional Spotify metadata
+  uploads        FileUpload[]
 }
 
 model SongLike {
@@ -127,16 +133,17 @@ enum ContentType {
 }
 
 model WordTimestamp {
-  id            String      @id @default(cuid())
-  songId        String
-  textContentId String
-  word          String
-  startTime     Float       // Start time in seconds
-  endTime       Float       // End time in seconds
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  song          Song        @relation(fields: [songId], references: [id], onDelete: Cascade)
-  textContent   TextContent @relation(fields: [textContentId], references: [id], onDelete: Cascade)
+  id                String      @id @default(cuid())
+  songId            String
+  textContentId     String
+  word              String
+  startTime         Float       // Start time in seconds
+  endTime           Float       // End time in seconds
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  song              Song        @relation(fields: [songId], references: [id], onDelete: Cascade)
+  textContent       TextContent @relation(fields: [textContentId], references: [id], onDelete: Cascade)
+  visualizationImages VisualizationImage[]
 }
 
 model Playlist {
@@ -164,17 +171,118 @@ model PlaylistSong {
 }
 
 model Tag {
-  id       String    @id @default(cuid())
-  name     String    @unique
-  songs    SongTag[]
+  id          String    @id @default(cuid())
+  name        String    @unique
+  category    TagCategory @default(GENERAL)
+  songs       SongTag[]
+}
+
+enum TagCategory {
+  GENERAL
+  GENRE
+  MOOD
+  ENERGY
+  SENTIMENT
+  TEMPO
+  THEME
 }
 
 model SongTag {
   songId   String
   tagId    String
+  value    Float?     // For numerical tags like energy level (0-1)
   addedAt  DateTime @default(now())
   song     Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
   tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([songId, tagId])
+}
+
+model Clip {
+  id          String    @id @default(cuid())
+  songId      String
+  name        String
+  description String?
+  startTime   Float     // Start time in seconds
+  endTime     Float     // End time in seconds
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  song        Song      @relation(fields: [songId], references: [id], onDelete: Cascade)
+  visualizations Visualization[]
+}
+
+model ReferenceImage {
+  id              String    @id @default(cuid())
+  url             String
+  prompt          String?   // Original prompt used to generate the image
+  description     String?
+  tags            String[]  // Keywords associated with the image
+  createdAt       DateTime  @default(now())
+  visualizations  VisualizationImage[]
+}
+
+model Visualization {
+  id              String    @id @default(cuid())
+  songId          String?
+  clipId          String?
+  name            String
+  description     String?
+  prompt          String?   // AI generation prompt
+  status          VisualizationStatus @default(PENDING)
+  visualizationType VisualizationType @default(IMAGE)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  song            Song?     @relation(fields: [songId], references: [id], onDelete: SetNull)
+  clip            Clip?     @relation(fields: [clipId], references: [id], onDelete: SetNull)
+  images          VisualizationImage[]
+}
+
+enum VisualizationStatus {
+  PENDING
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+enum VisualizationType {
+  IMAGE
+  ANIMATION
+  VIDEO
+}
+
+model VisualizationImage {
+  id              String    @id @default(cuid())
+  visualizationId String
+  referenceImageId String?
+  url             String
+  timestamp       Float?    // For timeline-based visualizations (seconds)
+  wordTimestampId String?
+  createdAt       DateTime  @default(now())
+  visualization   Visualization @relation(fields: [visualizationId], references: [id], onDelete: Cascade)
+  referenceImage  ReferenceImage? @relation(fields: [referenceImageId], references: [id], onDelete: SetNull)
+  wordTimestamp   WordTimestamp? @relation(fields: [wordTimestampId], references: [id], onDelete: SetNull)
+}
+
+model FileUpload {
+  id              String    @id @default(cuid())
+  filename        String
+  originalName    String
+  mimeType        String
+  size            Int       // Size in bytes
+  path            String    // Storage path 
+  url             String    // Public URL
+  uploaderId      String?   // User who uploaded the file
+  purpose         UploadPurpose
+  songId          String?   // Associated song (if applicable)
+  createdAt       DateTime  @default(now())
+  uploader        User?     @relation(fields: [uploaderId], references: [id], onDelete: SetNull)
+  song            Song?     @relation(fields: [songId], references: [id], onDelete: SetNull)
+}
+
+enum UploadPurpose {
+  AUDIO
+  IMAGE
+  REFERENCE_IMAGE
+  LYRICS
+  OTHER
 }

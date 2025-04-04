@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/test';
+import { Test, TestingModule } from '@nestjs/testing';
 import { ExecutionContext, CallHandler, UnauthorizedException } from '@nestjs/common';
 import { AuthInterceptor } from '../interceptors/auth.interceptor';
 import { of, throwError } from 'rxjs';

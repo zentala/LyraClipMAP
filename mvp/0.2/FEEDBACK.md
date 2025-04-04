@@ -6,8 +6,8 @@ Poniższa tabela przedstawia aktualny status realizacji rekomendacji z wcześnie
 
 | Obszar | Zrealizowane | W trakcie | Do realizacji |
 |--------|--------------|-----------|---------------|
-| Frontend Developer | 3/6 | 2/6 | 1/6 |
-| Backend Developer | 2/7 | 1/7 | 4/7 |
+| Frontend Developer | 4/6 | 1/6 | 1/6 |
+| Backend Developer | 3/7 | 0/7 | 4/7 |
 | DevOps | 1/7 | 0/7 | 6/7 |
 | UX Designer | 2/7 | 2/7 | 3/7 |
 | Tester | 0/7 | 0/7 | 7/7 |
@@ -21,19 +21,19 @@ Poniższa tabela przedstawia aktualny status realizacji rekomendacji z wcześnie
 - Solidne przykłady implementacji wizualizacji i synchronizacji tekstu
 - ✅ Kompletne definicje typów TypeScript
 - ✅ Implementacja Pinia dla zarządzania stanem
+- ✅ Walidacja formularzy z vee-validate i yup
 
 ### Obszary do poprawy
 1. ✅ ~~**Brak definicji typów TypeScript**~~ - zaimplementowano kompleksowe typy w katalogu `client/src/types/`
 2. ✅ ~~**Store/State Management**~~ - dodano szczegółową implementację Pinia w `client/src/stores/`
 3. ✅ ~~**Zarządzanie motywami**~~ - dodano implementację ciemnego motywu i systemu stylów w STYLE.md
-4. 🔄 **Zarządzanie formularzami** - brakuje szczegółów dot. walidacji formularzy z vee-validate i yup
+4. ✅ ~~**Zarządzanie formularzami**~~ - dodano implementację formularzy z walidacją używając vee-validate i yup oraz dokumentację w FORM_VALIDATION.md
 5. 🔄 **Obsługa błędów i ładowania** - potrzeba więcej informacji o komponentach loadingu i obsługi błędów
 6. ❌ **Brak konfiguracji testów** - nadal brak przykładów testów jednostkowych dla Vue z Vitest
 
 ### Proponowane uzupełnienia
 - Dodać przykłady testów komponentów (Vitest)
 - Uzupełnić dokumentację o strategię obsługi błędów
-- Dodać przykłady implementacji formularzy z walidacją (vee-validate + yup)
 
 ## Perspektywa Backend Developera
 
@@ -42,6 +42,7 @@ Poniższa tabela przedstawia aktualny status realizacji rekomendacji z wcześnie
 - Jasna architektura warstwowa w NestJS
 - Dobre wyjaśnienie endpointów API
 - ✅ Szczegółowy opis integracji z zewnętrznymi API (YouTube, serwisy lyrics)
+- ✅ Dokumentacja API z użyciem Swagger/OpenAPI
 
 ### Obszary do poprawy
 1. ✅ ~~**Komunikacja z zewnętrznymi API**~~ - dodano szczegółowy opis integracji
@@ -49,13 +50,13 @@ Poniższa tabela przedstawia aktualny status realizacji rekomendacji z wcześnie
 3. ❌ **Brak szczegółów walidacji** - nadal brak przykładów walidacji danych wejściowych z zod
 4. ❌ **Brak strategii migracji danych** - nie opisano jak migrować dane z v0.1 do v0.2
 5. ❌ **Bezpieczeństwo API** - brak szczegółowego opisu zabezpieczeń (CORS, Rate Limiting)
-6. ❌ **Dokumentacja API** - brak przykładu automatycznej dokumentacji API (np. Swagger)
+6. ✅ ~~**Dokumentacja API**~~ - dodano kompletną dokumentację API w formacie Swagger/OpenAPI wraz z przykładowym kodem NestJS
 7. ❌ **Cache'owanie** - brakuje szczegółów implementacji cache'a
 
 ### Proponowane uzupełnienia
 - Dodać przykłady DTOs z walidacją zod dla głównych endpointów
 - Uzupełnić o strategię migracji danych z Flask do NestJS
-- Dodać implementację Swagger/OpenAPI
+- ✅ ~~Dodać implementację Swagger/OpenAPI~~ - zrealizowano w API_DOCUMENTATION.md i swagger.json
 - Opisać szczegółową strategię cache'owania
 - Uzupełnić informacje o middleware, interceptorach i filtrach wyjątków
 
@@ -143,9 +144,9 @@ Poniższa tabela przedstawia aktualny status realizacji rekomendacji z wcześnie
 ## Priorytety na kolejne sprint
 
 ### Priorytet 1: Podstawowa dokumentacja implementacyjna
-1. **Formularze i walidacja** - dodać przykłady implementacji formularzy z vee-validate + yup
+1. ✅ ~~**Formularze i walidacja**~~ - dodano przykłady implementacji formularzy z vee-validate + yup
 2. **Testy jednostkowe** - dodać przykłady konfiguracji i testy dla komponentów Vue i serwisów NestJS
-3. **Dokumentacja API** - zaimplementować Swagger dla NestJS i dodać interaktywną dokumentację API
+3. ✅ ~~**Dokumentacja API**~~ - zaimplementowano Swagger dla NestJS i dodano interaktywną dokumentację API w swagger.json oraz API_DOCUMENTATION.md
 
 ### Priorytet 2: DevOps i wdrożenie
 1. **Dockerfile i docker-compose** - dodać pliki konfiguracyjne dla środowisk dev/prod

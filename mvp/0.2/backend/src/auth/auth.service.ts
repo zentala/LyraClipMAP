@@ -1,10 +1,11 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UserAlreadyExistsException, InvalidCredentialsException } from './exceptions/auth.exceptions';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +22,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('User already exists');
+      throw new UserAlreadyExistsException('User already exists');
     }
 
     // Sprawdź czy username jest już zajęte
@@ -30,7 +31,7 @@ export class AuthService {
     });
 
     if (existingUsername) {
-      throw new ConflictException('Username already exists');
+      throw new UserAlreadyExistsException('Username already exists');
     }
 
     // Hashuj hasło
@@ -61,14 +62,14 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new InvalidCredentialsException('Invalid credentials');
     }
 
     // Sprawdź hasło
     const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new InvalidCredentialsException('Invalid credentials');
     }
 
     // Wygeneruj token

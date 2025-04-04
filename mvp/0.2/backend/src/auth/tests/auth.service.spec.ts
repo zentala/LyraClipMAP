@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/test';
+import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth.service';
@@ -6,6 +6,13 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { UserAlreadyExistsException, InvalidCredentialsException } from '../exceptions/auth.exceptions';
+import { UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+
+jest.mock('bcrypt', () => ({
+  hash: jest.fn().mockResolvedValue('hashedPassword'),
+  compare: jest.fn(),
+}));
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -52,6 +59,9 @@ describe('AuthService', () => {
     jwtService = module.get<JwtService>(JwtService);
     prismaService = module.get<PrismaService>(PrismaService);
     configService = module.get<ConfigService>(ConfigService);
+
+    // Reset bcrypt mock
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -108,14 +118,14 @@ describe('AuthService', () => {
     };
 
     it('should login successfully', async () => {
-      const hashedPassword = await require('bcrypt').hash(loginDto.password, 10);
       mockPrismaService.user.findUnique.mockResolvedValue({
         id: 1,
         email: loginDto.email,
-        password: hashedPassword,
+        password: 'hashedPassword',
       });
       mockJwtService.sign.mockReturnValue('token');
       mockConfigService.get.mockReturnValue('secret');
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await service.login(loginDto);
 
@@ -140,6 +150,7 @@ describe('AuthService', () => {
         email: loginDto.email,
         password: 'wrongpassword',
       });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(service.login(loginDto)).rejects.toThrow(
         InvalidCredentialsException,

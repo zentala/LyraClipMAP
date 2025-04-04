@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/test';
+import { Test, TestingModule } from '@nestjs/testing';
 import { AuthValidator } from '../validators/auth.validator';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';

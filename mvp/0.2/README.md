@@ -1,123 +1,242 @@
-# LyraClipMAP v0.2
+# LyraClipMAP
 
-## Overview
+> **Your music map – with lyrics, emotion, and control.**
 
-LyraClipMAP is a web application for managing your music collection with synchronized lyrics. This project helps you organize songs with their lyrics, allowing you to search through your collection, play songs directly from YouTube, and manage your personal music database with karaoke-style synchronized lyrics.
+## 📦 Overview
+**LyraClipMAP** is an intelligent app for working with music and lyrics. It allows you to:
 
-## Core Features
+- Search songs by text fragments (even if you don't know the title)
+- See the structure of a track as a visual map
+- Synchronize lyrics with audio and highlight emotional moments
+- Clip and tag audio segments for later playback or sharing
+- Create collections and storyboards from chosen parts of songs
 
-- **Music Management**: Add, edit, and organize your song collection with metadata
-- **Multi-source Lyrics**: Automatic lyrics fetching from various sources (Tekstowo.pl, Genius, Musixmatch)
-- **YouTube Integration**: Extract metadata and embed videos directly from YouTube links
-- **Audio Visualization**: Waveform visualization with wavesurfer.js for an enhanced audio experience
-- **Synchronized Lyrics**: Karaoke-style synchronized lyrics display with line and word-level timing
-- **Search Functionality**: Full-text search through your music library and lyrics
-- **Modern Interface**: Responsive and intuitive user interface with Vuetify components
+## 🎯 Core Features (MVP)
 
-## Tech Stack
+1. **🔍 Lyrics Search**  
+   – Find songs by words, lines, or emotional themes.
 
-### Backend
-- **NestJS**: TypeScript-based Node.js framework with modular architecture
-- **PostgreSQL**: Modern, open-source relational database
-- **Prisma ORM**: Type-safe database client with migrations and excellent developer experience
-- **JWT**: Authentication (prepared for future implementation)
+2. **📈 Visual Track Map (ClipMAP)**  
+   – Shows loudness, tempo, mood, and lyrics over time.
 
-### Frontend
-- **Vue.js 3**: Modern JavaScript framework with the Composition API
-- **Vuetify 3**: Material Design component library for Vue
-- **Pinia**: State management solution
-- **TypeScript**: For type safety throughout the application
-- **Vite**: Fast build tool and development server
+3. **✂️ Clipping and Tagging**  
+   – Mark segments, name them, add notes or color tags.
 
-### Form Handling & Validation
-- **vee-validate + yup**: Form validation for the Vue frontend
-- **zod**: Schema validation for both frontend and backend
+4. **🎶 Audio-Lyrics Sync**  
+   – Karaoke-style sync, automatic or manual.
 
-### Development Tools
-- **PNPM**: Package manager with workspace support
-- **ESLint + Prettier**: Code formatting and linting
-- **Vitest**: Unit testing framework
+5. **📁 Clip Collections & Playlists**  
+   – Build emotional stories from your favorite parts.
 
-## Project Structure
+6. **📤 Export / Share**  
+   – Share clips and maps with others.
 
-```
-mvp/0.2/
-├── client/              # Vue.js frontend application
-├── server/              # NestJS backend application
-├── ARCHITECTURE.md      # Architecture documentation
-├── TECHNICAL_DETAILS.md # Technical implementation details
-├── CONSISTENCY.md       # Naming conventions and consistency guidelines
-├── LANG.md              # Ubiquitous language definitions
-└── package.json         # Root package.json for PNPM workspace
-```
-
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 16+
-- PostgreSQL 14+
-- PNPM 7+
-- Docker (optional)
+- Python 3.8+
+- pip (Python package manager)
+- Python virtual environment package (for isolated dependencies)
 
-### Installation
+### Installation & Running (Recommended Method)
 
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/LyraClipMAP.git
-cd LyraClipMAP/mvp/0.2
+# 1. Clone the repository
+git clone https://github.com/zentala/LyraClipMAP.git
+cd LyraClipMAP
+
+# 2. Install virtual environment package if you don't have it
+sudo apt install python3-venv python3-full -y
+
+# 3. Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# 4. Install dependencies
+pip install -r requirements.txt
+
+# 5. Run the application
+PYTHONPATH=/home/zentala/code/LyraClipMAP python3 app/main.py
+# Or use your actual path to the project:
+# PYTHONPATH=/path/to/LyraClipMAP python3 app/main.py
+
+# 6. Open your browser and navigate to http://localhost:8000
 ```
 
-2. Install dependencies:
+### Alternative Methods
+
+**Running directly (not recommended in newer Python versions)**
 ```bash
+# Install dependencies globally (may require --break-system-packages flag on newer systems)
+pip install -r requirements.txt --break-system-packages
+
+# Run the application
+PYTHONPATH=/path/to/LyraClipMAP python3 app/main.py
+```
+
+**Using pipx (for application-style installation)**
+```bash
+# Install pipx if you don't have it
+sudo apt install pipx
+
+# Use pipx to run the application in an isolated environment
+pipx run --spec -r requirements.txt flask run -p 8000 -h 0.0.0.0
+```
+
+## 🧰 Current Functionality
+
+- Add songs with YouTube URLs (e.g., https://www.youtube.com/watch?v=PR_eYLKPmko)
+- Auto-fetch lyrics from tekstowo.pl
+- Search through lyrics, song titles, and artists
+- View songs with embedded YouTube players
+
+## 📊 Database Structure
+
+- **Songs**: Titles and artists
+- **Text Content**: Lyrics, translations (with language tags)
+- **Audio Sources**: YouTube links (expandable to other sources)
+- **Word Timestamps**: For future word-level synchronization
+
+## 🖼️ User Flow
+
+1. **Home**
+   - 🔍 Search bar
+   - 🎧 Recently played
+   - 📂 User collections
+
+2. **Track View**
+   - 🧠 Audio map with lyrics, waveform, emotion colors
+   - 🎤 Synced lyrics display
+   - ✂️ Clipping tool
+
+3. **Clip Editor**
+   - Title, tags, color, note
+   - 🎚️ Length & cut options
+   - ⏳ Time markers and mood labels
+
+4. **Collection / Storyboard**
+   - 📋 Clip list with descriptions
+   - ▶️ Play montage mode
+   - 📤 Export options
+
+## 🌱 Future Development
+
+- Word-to-timestamp mapping using auto-transcription
+- Support for more lyrics sources
+- Better YouTube title parsing
+- Multiple audio source types
+- AI-powered tagging of emotion and lyrical themes
+- Community: shared clips and collaborative maps
+- Compare versions: covers, remixes, and live edits
+- Export to TikTok / Instagram / Reels
+- Expand to podcasts and spoken word content
+
+## 📝 License
+[MIT](LICENSE)
+
+## 📧 Contact
+Your Name – [@yourhandle](https://twitter.com/yourhandle) – your.email@example.com
+
+Project Link: [https://github.com/zentala/LyraClipMAP](https://github.com/zentala/LyraClipMAP)
+
+## 🧪 Testing
+
+### Backend Tests
+
+The backend uses Jest for testing. To run the tests:
+
+```bash
+# Install dependencies
+cd backend
 pnpm install
+
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Run tests with coverage
+pnpm test:cov
+
+# Run e2e tests
+pnpm test:e2e
 ```
 
-3. Set up environment variables:
+Test files are located in:
+- Unit tests: `backend/src/**/*.spec.ts`
+- E2E tests: `backend/test/**/*.e2e-spec.ts`
+
+### Test Structure
+
+The tests cover:
+- Authentication (register, login, token refresh)
+- Guards and interceptors
+- Validators and pipes
+- Services and controllers
+- Database operations
+- Error handling
+
+## 💾 Database Setup
+
+The project uses Prisma ORM with PostgreSQL. Follow these steps to set up the database:
+
+1. Make sure you have PostgreSQL installed and running
 ```bash
-cp server/.env.example server/.env
-cp client/.env.example client/.env
+# On Ubuntu/Debian
+sudo apt install postgresql
+sudo systemctl start postgresql
 ```
 
-4. Set up the database:
+2. Create a new database
 ```bash
-cd server
-pnpm prisma migrate dev
+sudo -u postgres psql
+postgres=# CREATE DATABASE lyraclipmap;
+postgres=# \q
 ```
 
-5. Start the development servers:
+3. Set up environment variables - create `.env` file in the `backend` directory:
 ```bash
-# From the root directory (mvp/0.2)
-pnpm dev
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/lyraclipmap"
+JWT_SECRET="your-secret-key"
 ```
 
-6. Visit `http://localhost:5173` in your browser to see the application.
+4. Run database migrations
+```bash
+cd backend
+pnpm prisma:generate   # Generate Prisma Client
+pnpm prisma:migrate    # Run migrations
+```
 
-## Documentation
+5. (Optional) Open Prisma Studio to manage your data
+```bash
+pnpm prisma:studio
+```
 
-- [Architecture Overview](./ARCHITECTURE.md) - System architecture and design
-- [Technical Details](./TECHNICAL_DETAILS.md) - Implementation details and technical specifications
-- [Consistency Guide](./CONSISTENCY.md) - Naming conventions and consistency standards
-- [Ubiquitous Language](./LANG.md) - Domain language definitions for the project
+## Dokumentacja
 
-## Key Components
+Dokumentacja projektu została podzielona na trzy główne sekcje:
 
-### WavePlayer
-Audio player with waveform visualization using wavesurfer.js. Supports playback controls, regions, and markers for synchronized lyrics.
+### 1. Dokumentacja ogólna (`/docs`)
+- [Architektura systemu](docs/ARCHITECTURE.md)
+- [Struktura projektu](docs/PROJECT_STRUCTURE.md)
+- [Standardy i konwencje](docs/CONSISTENCY.md)
+- [Język i komunikacja](docs/LANG.md)
+- [Jak to działa](docs/HOW_IT_WORKS.md)
+- [Wizualizacja audio](docs/AUDIO_VISUALIZATION.md)
+- [Badania nad wizualizacją audio](docs/AUDIO_VISUALIZATION_RESEARCH.md)
+- [Konwersja tekstu do LRC](docs/TEXT_TO_LRC.md)
+- [Feedback i uwagi](docs/FEEDBACK.md)
 
-### LyricsDisplay
-Component for displaying synchronized lyrics with support for scroll and karaoke modes, word-level highlighting, and translations.
+### 2. Dokumentacja backendu (`/backend/docs`)
+- [TODO i plan rozwoju](backend/docs/TODO.md)
+- [Dokumentacja API](backend/docs/API_DOCUMENTATION.md)
+- [Szczegóły techniczne](backend/docs/TECHNICAL_DETAILS.md)
+- [Struktura danych](backend/docs/DATA_STRUCTURE.md)
 
-### SongDetail
-Comprehensive view for song details, integrating the YouTube player, waveform visualization, and synchronized lyrics display.
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+### 3. Dokumentacja frontendu (`/frontend/docs`)
+- [Interfejs użytkownika](frontend/docs/UI.xml)
+- [Doświadczenie użytkownika](frontend/docs/UX.xml)
+- [Style i wygląd](frontend/docs/STYLE.md)
+- [Walidacja formularzy](frontend/docs/FORM_VALIDATION.md)
+- [Prezentacja dla klienta](frontend/docs/KLIENT_PREZENTACJA.md)
