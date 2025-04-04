@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LyraClipMAP{% endblock %}</title>
+    
+    <!-- Material Design 5 Web -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Primary color - deep purple */
+            --md-primary-color: #6200ee;
+            --md-primary-variant: #3700b3;
+            /* Secondary color - teal */
+            --md-secondary-color: #03dac6;
+            --md-secondary-variant: #018786;
+            /* Background colors */
+            --md-background: #ffffff;
+            --md-surface: #ffffff;
+            --md-error: #b00020;
+            /* Text colors */
+            --md-on-primary: #ffffff;
+            --md-on-secondary: #000000;
+            --md-on-background: #000000;
+            --md-on-surface: #000000;
+            --md-on-error: #ffffff;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--md-background);
+            color: var(--md-on-background);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        main {
+            flex: 1;
+        }
+        
+        /* Top app bar */
+        .md-app-bar {
+            background-color: var(--md-primary-color);
+            color: var(--md-on-primary);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            height: 64px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .md-app-bar__title {
+            font-size: 20px;
+            font-weight: 500;
+            margin-right: 32px;
+            text-decoration: none;
+            color: var(--md-on-primary);
+        }
+        
+        .md-app-bar__search {
+            flex: 1;
+            position: relative;
+            max-width: 600px;
+        }
+        
+        .md-app-bar__search-input {
+            width: 100%;
+            padding: 8px 16px 8px 40px;
+            border-radius: 4px;
+            border: none;
+            background-color: rgba(255,255,255,0.15);
+            color: var(--md-on-primary);
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        .md-app-bar__search-input:focus {
+            background-color: rgba(255,255,255,0.25);
+            outline: none;
+        }
+        
+        .md-app-bar__search-input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .md-app-bar__search-icon {
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--md-on-primary);
+            opacity: 0.7;
+        }
+        
+        .md-app-bar__actions {
+            display: flex;
+            margin-left: 16px;
+        }
+        
+        /* Material button */
+        .md-button {
+            background-color: transparent;
+            color: inherit;
+            border: none;
+            border-radius: 4px;
+            padding: 0 16px;
+            height: 36px;
+            font-size: 14px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1.25px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .md-button:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+        
+        .md-button--raised {
+            background-color: var(--md-primary-color);
+            color: var(--md-on-primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .md-button--raised:hover {
+            background-color: var(--md-primary-variant);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .md-button--secondary {
+            background-color: var(--md-secondary-color);
+            color: var(--md-on-secondary);
+        }
+        
+        .md-button--secondary:hover {
+            background-color: var(--md-secondary-variant);
+        }
+        
+        .md-button .material-icons {
+            margin-right: 8px;
+        }
+        
+        /* Masonry Grid */
+        .md-masonry-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-gap: 16px;
+            padding: 16px;
+        }
+        
+        /* Card */
+        .md-card {
+            background-color: var(--md-surface);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .md-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+        
+        .md-card__media {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 aspect ratio */
+            background-color: #f5f5f5;
+        }
+        
+        .md-card__media img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .md-card__content {
+            padding: 16px;
+        }
+        
+        .md-card__title {
+            font-size: 20px;
+            font-weight: 500;
+            margin: 0 0 8px 0;
+        }
+        
+        .md-card__subtitle {
+            font-size: 14px;
+            color: rgba(0,0,0,0.6);
+            margin: 0;
+        }
+        
+        .md-card__actions {
+            display: flex;
+            padding: 8px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        /* Footer */
+        .md-footer {
+            background-color: #f5f5f5;
+            padding: 32px 16px;
+            margin-top: 32px;
+        }
+        
+        .md-footer__content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        
+        .md-footer__section {
+            min-width: 200px;
+            margin-bottom: 24px;
+        }
+        
+        .md-footer__title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+        
+        .md-footer__copyright {
+            width: 100%;
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            font-size: 14px;
+            color: rgba(0,0,0,0.6);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .md-app-bar {
+                height: 56px;
+            }
+            
+            .md-app-bar__search {
+                display: none;
+            }
+            
+            .md-app-bar__search--mobile {
+                display: block;
+                margin: 8px 16px;
+                max-width: none;
+                width: auto;
+            }
+            
+            .md-masonry-grid {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .md-masonry-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Additional custom styles */
+        {% block styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    <!-- App Bar -->
+    <header class="md-app-bar">
+        <a href="/" class="md-app-bar__title">LyraClipMAP</a>
+        
+        <div class="md-app-bar__search">
+            <span class="material-icons md-app-bar__search-icon">search</span>
+            <form action="/search" method="POST">
+                <input type="text" class="md-app-bar__search-input" name="query" placeholder="Search songs, artists, lyrics...">
+            </form>
+        </div>
+        
+        <div class="md-app-bar__actions">
+            <a href="/add" class="md-button md-button--raised">
+                <span class="material-icons">add</span>
+                Add Song
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="md-footer">
+        <div class="md-footer__content">
+            <div class="md-footer__section">
+                <h3 class="md-footer__title">LyraClipMAP</h3>
+                <p>Your music map – with lyrics, emotion, and control.</p>
+            </div>
+            
+            <div class="md-footer__section">
+                <h3 class="md-footer__title">Features</h3>
+                <ul>
+                    <li>Lyrics Search</li>
+                    <li>Visual Track Map</li>
+                    <li>Clipping and Tagging</li>
+                    <li>Audio-Lyrics Sync</li>
+                </ul>
+            </div>
+            
+            <div class="md-footer__section">
+                <h3 class="md-footer__title">Links</h3>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/about">About</a></li>
+                    <li><a href="/contact">Contact</a></li>
+                </ul>
+            </div>
+            
+            <div class="md-footer__copyright">
+                &copy; {% now 'Y' %} LyraClipMAP
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

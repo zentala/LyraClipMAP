@@ -194,3 +194,28 @@ def delete_song(song_id):
         return redirect(url_for('home'))
     except Exception as e:
         return str(e), 400
+        
+# Material Design UI Routes - Demo
+@app.route('/material')
+def material_home():
+    """Home page with Material Design UI"""
+    songs = Song.query.order_by(desc(Song.id)).all()
+    return render_template('material_index.html', songs=songs)
+    
+@app.route('/material/song/<int:song_id>')
+def material_view_song(song_id):
+    """View a specific song with Material Design UI"""
+    song = Song.query.get_or_404(song_id)
+    
+    # Get YouTube embed HTML if available
+    youtube_embed = None
+    for source in song.audio_sources:
+        if source.source_type == "youtube":
+            try:
+                yt_info = extract_youtube_info(source.url)
+                youtube_embed = get_youtube_embed_html(yt_info['video_id'])
+                break
+            except:
+                continue
+    
+    return render_template('material_song_detail.html', song=song, youtube_embed=youtube_embed)

@@ -1,0 +1,379 @@
+{% extends "material_base.html" %}
+
+{% block title %}{{ song.title }} by {{ song.artist }} - LyraClipMAP{% endblock %}
+
+{% block styles %}
+.song-hero {
+    position: relative;
+    height: 400px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+}
+
+.song-hero__bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('https://picsum.photos/seed/{{ song.id }}/1200/800');
+    background-size: cover;
+    background-position: center;
+    filter: blur(2px);
+    opacity: 0.7;
+    z-index: -1;
+}
+
+.song-hero__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.8));
+    z-index: -1;
+}
+
+.song-hero__content {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px;
+    color: white;
+}
+
+.song-hero__title {
+    font-size: 48px;
+    font-weight: 700;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.song-hero__artist {
+    font-size: 24px;
+    margin: 8px 0 0;
+    opacity: 0.9;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.song-hero__actions {
+    margin-top: 24px;
+    display: flex;
+    gap: 16px;
+}
+
+.song-content {
+    max-width: 1200px;
+    margin: 32px auto;
+    padding: 0 16px;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 32px;
+}
+
+.song-content__main {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.song-content__sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.song-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.song-tab {
+    padding: 16px 24px;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    color: rgba(0,0,0,0.6);
+}
+
+.song-tab--active {
+    color: var(--md-primary-color);
+}
+
+.song-tab--active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: var(--md-primary-color);
+}
+
+.song-tab-content {
+    display: none;
+    padding: 24px;
+}
+
+.song-tab-content--active {
+    display: block;
+}
+
+.song-lyrics {
+    white-space: pre-wrap;
+    line-height: 1.8;
+    font-size: 16px;
+}
+
+.song-video {
+    position: relative;
+    padding-top: 56.25%; /* 16:9 aspect ratio */
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.song-video iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.song-info-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 24px;
+}
+
+.song-info-title {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.song-info-item {
+    display: flex;
+    margin-bottom: 12px;
+}
+
+.song-info-label {
+    font-weight: 500;
+    width: 120px;
+    color: rgba(0,0,0,0.6);
+}
+
+.song-info-value {
+    flex: 1;
+}
+
+.emotions-timeline {
+    width: 100%;
+    height: 150px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    margin-top: 24px;
+}
+
+.emotion-segment {
+    position: absolute;
+    height: 100%;
+    top: 0;
+}
+
+.emotion-segment--joy {
+    background-color: #FFC107;
+}
+
+.emotion-segment--sadness {
+    background-color: #2196F3;
+}
+
+.emotion-segment--excitement {
+    background-color: #F44336;
+}
+
+.emotion-segment--calm {
+    background-color: #4CAF50;
+}
+
+@media (max-width: 992px) {
+    .song-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .song-hero__title {
+        font-size: 36px;
+    }
+    
+    .song-hero__artist {
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .song-hero {
+        height: 300px;
+    }
+    
+    .song-hero__title {
+        font-size: 28px;
+    }
+    
+    .song-hero__artist {
+        font-size: 18px;
+    }
+    
+    .song-hero__actions {
+        flex-wrap: wrap;
+    }
+}
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="song-hero">
+    <div class="song-hero__bg"></div>
+    <div class="song-hero__overlay"></div>
+    <div class="song-hero__content">
+        <h1 class="song-hero__title">{{ song.title }}</h1>
+        <p class="song-hero__artist">{{ song.artist }}</p>
+        <div class="song-hero__actions">
+            <a href="/edit/{{ song.id }}" class="md-button md-button--raised">
+                <span class="material-icons">edit</span>
+                Edit Song
+            </a>
+            <button class="md-button">
+                <span class="material-icons">favorite_border</span>
+                Favorite
+            </button>
+            <button class="md-button">
+                <span class="material-icons">share</span>
+                Share
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Main Content -->
+<div class="song-content">
+    <div class="song-content__main">
+        <div class="song-tabs">
+            <div class="song-tab song-tab--active" data-tab="lyrics">Lyrics</div>
+            <div class="song-tab" data-tab="clip-map">ClipMAP</div>
+            <div class="song-tab" data-tab="clips">Clips</div>
+        </div>
+        
+        <div class="song-tab-content song-tab-content--active" id="tab-lyrics">
+            <div class="song-lyrics">
+                {% for text in song.text_contents %}
+                    {% if text.content_type == 'lyrics' %}
+                        {{ text.content }}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="song-tab-content" id="tab-clip-map">
+            <h3>Track Visualization</h3>
+            <p>This feature will display the audio waveform, emotional mapping, and allow for clip creation.</p>
+            
+            <div class="emotions-timeline">
+                <div class="emotion-segment emotion-segment--joy" style="left: 0%; width: 20%;"></div>
+                <div class="emotion-segment emotion-segment--sadness" style="left: 20%; width: 30%;"></div>
+                <div class="emotion-segment emotion-segment--excitement" style="left: 50%; width: 15%;"></div>
+                <div class="emotion-segment emotion-segment--calm" style="left: 65%; width: 35%;"></div>
+            </div>
+            
+            <p style="margin-top: 24px;">The ClipMAP feature is under development. Stay tuned for updates!</p>
+        </div>
+        
+        <div class="song-tab-content" id="tab-clips">
+            <h3>Your Clips</h3>
+            <p>You have not created any clips for this song yet.</p>
+            <button class="md-button md-button--raised" style="margin-top: 16px;">
+                <span class="material-icons">content_cut</span>
+                Create First Clip
+            </button>
+        </div>
+    </div>
+    
+    <div class="song-content__sidebar">
+        {% if youtube_embed %}
+        <div class="song-video">
+            {{ youtube_embed | safe }}
+        </div>
+        {% endif %}
+        
+        <div class="song-info-card">
+            <h3 class="song-info-title">Song Information</h3>
+            
+            <div class="song-info-item">
+                <div class="song-info-label">Title</div>
+                <div class="song-info-value">{{ song.title }}</div>
+            </div>
+            
+            <div class="song-info-item">
+                <div class="song-info-label">Artist</div>
+                <div class="song-info-value">{{ song.artist }}</div>
+            </div>
+            
+            <div class="song-info-item">
+                <div class="song-info-label">Added</div>
+                <div class="song-info-value">April 4, 2025</div>
+            </div>
+            
+            <div class="song-info-item">
+                <div class="song-info-label">Language</div>
+                <div class="song-info-value">
+                    {% for text in song.text_contents %}
+                        {% if text.content_type == 'lyrics' %}
+                            {{ text.language|default:"Unknown" }}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="song-info-card">
+            <h3 class="song-info-title">More by this Artist</h3>
+            <p>Coming soon! This feature will suggest other songs by {{ song.artist }}.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tab switching functionality
+        const tabs = document.querySelectorAll('.song-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs
+                tabs.forEach(t => t.classList.remove('song-tab--active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('song-tab--active');
+                
+                // Hide all tab content
+                const tabContents = document.querySelectorAll('.song-tab-content');
+                tabContents.forEach(content => content.classList.remove('song-tab-content--active'));
+                
+                // Show the selected tab content
+                const tabName = this.getAttribute('data-tab');
+                document.getElementById(`tab-${tabName}`).classList.add('song-tab-content--active');
+            });
+        });
+    });
+</script>
+{% endblock %}
