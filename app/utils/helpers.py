@@ -168,19 +168,39 @@ def search_for_lyrics(artist: str, title: str) -> Optional[str]:
     Search for lyrics using multiple sources
     Returns lyrics text if found, None otherwise
     """
+    print(f"\n=========== LYRICS SEARCH ===========")
+    print(f"Starting lyrics search for: '{artist}' - '{title}'")
+    print(f"======================================\n")
+    
     # Try different sources in order of reliability
+    print(f"[1/3] Trying tekstowo.pl...")
     lyrics = search_tekstowo(artist, title)
     if lyrics:
+        print(f"SUCCESS! Found lyrics on tekstowo.pl ({len(lyrics)} chars)")
+        print(f"Sample: '{lyrics[:100]}...'")
         return lyrics
-        
+    else:
+        print(f"Failed to find lyrics on tekstowo.pl")
+    
+    print(f"\n[2/3] Trying Genius...")
     lyrics = search_genius(artist, title)
     if lyrics:
+        print(f"SUCCESS! Found lyrics on Genius ({len(lyrics)} chars)")
+        print(f"Sample: '{lyrics[:100]}...'")
         return lyrics
+    else:
+        print(f"Failed to find lyrics on Genius")
     
+    print(f"\n[3/3] Trying Musixmatch...")
     lyrics = search_musixmatch(artist, title)
     if lyrics:
+        print(f"SUCCESS! Found lyrics on Musixmatch ({len(lyrics)} chars)")
+        print(f"Sample: '{lyrics[:100]}...'")
         return lyrics
+    else:
+        print(f"Failed to find lyrics on Musixmatch")
     
+    print(f"\n❌ All sources failed. No lyrics found for '{artist}' - '{title}'")
     return None
     
 def search_tekstowo(artist: str, title: str) -> Optional[str]:
@@ -188,7 +208,9 @@ def search_tekstowo(artist: str, title: str) -> Optional[str]:
     Search for lyrics on tekstowo.pl
     Returns lyrics text if found, None otherwise
     """
-    print(f"Searching tekstowo.pl for: {artist} - {title}")
+    print(f"🔍 Detailed search on tekstowo.pl:")
+    print(f"   Artist: '{artist}'")
+    print(f"   Title: '{title}'")
     
     # Format search query
     search_query = f"{artist} {title}".replace(" ", "+")
@@ -199,54 +221,84 @@ def search_tekstowo(artist: str, title: str) -> Optional[str]:
     try:
         # Try direct search on tekstowo.pl first
         tekstowo_search_url = f"https://www.tekstowo.pl/szukaj,wykonawca,{artist.replace(' ', '+')},tytul,{title.replace(' ', '+')}.html"
+        print(f"   Direct search URL: {tekstowo_search_url}")
+        
         search_response = requests.get(tekstowo_search_url, headers=headers)
+        print(f"   Search response status: {search_response.status_code}")
+        
         search_soup = BeautifulSoup(search_response.text, 'html.parser')
         
         # Look for search results
         result_links = search_soup.select('a.title')
+        print(f"   Found {len(result_links)} direct search results")
         
         if result_links:
             # Get the first result
             first_result = result_links[0]
+            result_title = first_result.text.strip()
             result_url = "https://www.tekstowo.pl" + first_result.get('href')
+            print(f"   First result: '{result_title}' at {result_url}")
             
             # Get lyrics page
             lyrics_response = requests.get(result_url, headers=headers)
+            print(f"   Lyrics page response status: {lyrics_response.status_code}")
+            
             lyrics_soup = BeautifulSoup(lyrics_response.text, 'html.parser')
             
             # Find lyrics text
             lyrics_div = lyrics_soup.find('div', {'class': 'inner-text'})
             if lyrics_div:
                 lyrics = lyrics_div.get_text(strip=True)
-                print(f"Found lyrics on tekstowo.pl: {len(lyrics)} characters")
+                print(f"   ✅ SUCCESS via direct search! Found lyrics: {len(lyrics)} characters")
                 return lyrics
+            else:
+                print(f"   ❌ Found result page but no lyrics div found")
+        else:
+            print(f"   ❌ No direct search results found")
     
         # Fallback: Search on Google
         search_url = f"https://www.google.com/search?q=site:tekstowo.pl+{search_query}"
+        print(f"   Fallback: Google search URL: {search_url}")
+        
         response = requests.get(search_url, headers=headers)
+        print(f"   Google search response status: {response.status_code}")
+        
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # Find first tekstowo.pl result
+        google_results = []
         for link in soup.find_all('a'):
             href = link.get('href')
             if href and 'tekstowo.pl' in href and 'text' in href:
-                # Extract actual URL from Google redirect
-                tekstowo_url = href.split('&')[0].replace('/url?q=', '')
-                
-                # Get lyrics page
-                lyrics_response = requests.get(tekstowo_url, headers=headers)
-                lyrics_soup = BeautifulSoup(lyrics_response.text, 'html.parser')
-                
-                # Find lyrics text
-                lyrics_div = lyrics_soup.find('div', {'class': 'inner-text'})
-                if lyrics_div:
-                    lyrics = lyrics_div.get_text(strip=True)
-                    print(f"Found lyrics on tekstowo.pl via Google: {len(lyrics)} characters")
-                    return lyrics
+                google_results.append(href)
+        
+        print(f"   Found {len(google_results)} Google search results for tekstowo.pl")
+        
+        if google_results:
+            # Extract actual URL from Google redirect
+            tekstowo_url = google_results[0].split('&')[0].replace('/url?q=', '')
+            print(f"   First Google result URL: {tekstowo_url}")
+            
+            # Get lyrics page
+            lyrics_response = requests.get(tekstowo_url, headers=headers)
+            print(f"   Lyrics page response status (via Google): {lyrics_response.status_code}")
+            
+            lyrics_soup = BeautifulSoup(lyrics_response.text, 'html.parser')
+            
+            # Find lyrics text
+            lyrics_div = lyrics_soup.find('div', {'class': 'inner-text'})
+            if lyrics_div:
+                lyrics = lyrics_div.get_text(strip=True)
+                print(f"   ✅ SUCCESS via Google! Found lyrics: {len(lyrics)} characters")
+                return lyrics
+            else:
+                print(f"   ❌ Found result page via Google but no lyrics div found")
     except Exception as e:
-        print(f"Error searching tekstowo.pl: {e}")
+        import traceback
+        print(f"   ❌ ERROR searching tekstowo.pl: {e}")
+        print(traceback.format_exc())
     
-    print("No lyrics found on tekstowo.pl")
+    print("   ❌ No lyrics found on tekstowo.pl after all attempts")
     return None
     
 def search_genius(artist: str, title: str) -> Optional[str]:
@@ -254,7 +306,9 @@ def search_genius(artist: str, title: str) -> Optional[str]:
     Search for lyrics on Genius
     Returns lyrics text if found, None otherwise
     """
-    print(f"Searching Genius for: {artist} - {title}")
+    print(f"🔍 Detailed search on Genius:")
+    print(f"   Artist: '{artist}'")
+    print(f"   Title: '{title}'")
     
     # Format search query
     search_query = f"{artist} {title} lyrics".replace(" ", "+")
@@ -265,40 +319,89 @@ def search_genius(artist: str, title: str) -> Optional[str]:
     try:
         # Search on Google
         search_url = f"https://www.google.com/search?q=site:genius.com+{search_query}"
+        print(f"   Google search URL: {search_url}")
+        
         response = requests.get(search_url, headers=headers)
+        print(f"   Google search response status: {response.status_code}")
+        
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # Find first genius.com result
+        genius_results = []
         for link in soup.find_all('a'):
             href = link.get('href')
             if href and 'genius.com' in href and ('/lyrics/' in href or '-lyrics' in href):
-                # Extract actual URL from Google redirect
-                genius_url = href.split('&')[0].replace('/url?q=', '')
+                genius_results.append(href)
                 
-                # Get lyrics page
-                lyrics_response = requests.get(genius_url, headers=headers)
-                lyrics_soup = BeautifulSoup(lyrics_response.text, 'html.parser')
+        print(f"   Found {len(genius_results)} Google search results for Genius")
+        
+        if genius_results:
+            # Extract actual URL from Google redirect
+            genius_url = genius_results[0].split('&')[0].replace('/url?q=', '')
+            print(f"   First Genius result URL: {genius_url}")
+            
+            # Get lyrics page
+            lyrics_response = requests.get(genius_url, headers=headers)
+            print(f"   Lyrics page response status: {lyrics_response.status_code}")
+            
+            lyrics_soup = BeautifulSoup(lyrics_response.text, 'html.parser')
+            
+            # Try to get the song title from Genius page
+            song_title_element = lyrics_soup.select_one('h1')
+            if song_title_element:
+                song_title = song_title_element.text.strip()
+                print(f"   Song title on Genius: '{song_title}'")
+            
+            # Try to get the artist from Genius page
+            artist_element = lyrics_soup.select_one('a[href*="/artists/"]')
+            if artist_element:
+                artist_name = artist_element.text.strip()
+                print(f"   Artist on Genius: '{artist_name}'")
                 
-                # Find lyrics text - Genius stores lyrics in multiple divs with class 'Lyrics__Container'
-                lyrics_divs = lyrics_soup.find_all('div', {'class': 'Lyrics__Container'})
-                if lyrics_divs:
+            # Find lyrics text - Genius stores lyrics in multiple divs with class 'Lyrics__Container'
+            print(f"   Trying to find lyrics with class 'Lyrics__Container'...")
+            lyrics_divs = lyrics_soup.find_all('div', {'class': 'Lyrics__Container'})
+            if lyrics_divs:
+                lyrics = ''
+                for div in lyrics_divs:
+                    lyrics += div.get_text() + '\n'
+                print(f"   ✅ SUCCESS! Found lyrics with class selector: {len(lyrics)} characters")
+                return lyrics
+            
+            # Try alternative selectors if the standard one fails
+            print(f"   Trying alternative selector '[data-lyrics-container=\"true\"]'...")
+            lyrics_div = lyrics_soup.select_one('[data-lyrics-container="true"]')
+            if lyrics_div:
+                lyrics = lyrics_div.get_text()
+                print(f"   ✅ SUCCESS! Found lyrics with data attribute selector: {len(lyrics)} characters")
+                return lyrics
+            
+            # Try more generic selectors if all else fails
+            print(f"   Trying more generic selectors...")
+            potential_lyrics_containers = [
+                lyrics_soup.select('.lyrics'),
+                lyrics_soup.select('.song_body-lyrics'),
+                lyrics_soup.select('.song-lyrics'),
+            ]
+            
+            for container_list in potential_lyrics_containers:
+                if container_list:
                     lyrics = ''
-                    for div in lyrics_divs:
-                        lyrics += div.get_text() + '\n'
-                    print(f"Found lyrics on Genius: {len(lyrics)} characters")
+                    for container in container_list:
+                        lyrics += container.get_text() + '\n'
+                    print(f"   ✅ SUCCESS! Found lyrics with generic selector: {len(lyrics)} characters")
                     return lyrics
-                
-                # Try alternative selectors if the standard one fails
-                lyrics_div = lyrics_soup.select_one('[data-lyrics-container="true"]')
-                if lyrics_div:
-                    lyrics = lyrics_div.get_text()
-                    print(f"Found lyrics on Genius (alt method): {len(lyrics)} characters")
-                    return lyrics
+            
+            print(f"   ❌ Found Genius page but could not locate lyrics with any selector")
+        else:
+            print(f"   ❌ No Genius results found on Google")
                     
     except Exception as e:
-        print(f"Error searching Genius: {e}")
+        import traceback
+        print(f"   ❌ ERROR searching Genius: {e}")
+        print(traceback.format_exc())
     
-    print("No lyrics found on Genius")
+    print("   ❌ No lyrics found on Genius after all attempts")
     return None
     
 def search_musixmatch(artist: str, title: str) -> Optional[str]:
@@ -306,7 +409,9 @@ def search_musixmatch(artist: str, title: str) -> Optional[str]:
     Search for lyrics on Musixmatch
     Returns lyrics text if found, None otherwise
     """
-    print(f"Searching Musixmatch for: {artist} - {title}")
+    print(f"🔍 Detailed search on Musixmatch:")
+    print(f"   Artist: '{artist}'")
+    print(f"   Title: '{title}'")
     
     # Format search query
     search_query = f"{artist} {title} lyrics".replace(" ", "+")
@@ -315,43 +420,141 @@ def search_musixmatch(artist: str, title: str) -> Optional[str]:
     }
     
     try:
-        # Search on Google
+        # Try direct search first
+        direct_url = f"https://www.musixmatch.com/search/{search_query.replace('+', '%20')}"
+        print(f"   Direct search URL: {direct_url}")
+        
+        try:
+            direct_response = requests.get(direct_url, headers=headers)
+            print(f"   Direct search response status: {direct_response.status_code}")
+            
+            direct_soup = BeautifulSoup(direct_response.text, 'html.parser')
+            
+            # Try to find the first search result
+            search_results = direct_soup.select('.title')
+            print(f"   Found {len(search_results)} direct search results")
+            
+            if search_results and len(search_results) > 0:
+                # Get the first result href
+                result_link = None
+                for result in search_results:
+                    parent = result.parent
+                    if parent and parent.name == 'a' and 'href' in parent.attrs:
+                        result_link = parent['href']
+                        break
+                
+                if result_link:
+                    result_url = f"https://www.musixmatch.com{result_link}"
+                    print(f"   First result URL: {result_url}")
+                    
+                    # Get lyrics page
+                    lyrics_response = requests.get(result_url, headers=headers)
+                    print(f"   Lyrics page response status: {lyrics_response.status_code}")
+                    
+                    lyrics_soup = BeautifulSoup(lyrics_response.text, 'html.parser')
+                    
+                    # Try to get actual song title and artist
+                    song_header = lyrics_soup.select_one('.mxm-track-title h1')
+                    if song_header:
+                        print(f"   Song title on page: '{song_header.text.strip()}'")
+                    
+                    artist_header = lyrics_soup.select_one('.mxm-track-title h2 a')
+                    if artist_header:
+                        print(f"   Artist on page: '{artist_header.text.strip()}'")
+                    
+                    # Search for lyrics using various selectors
+                    print(f"   Searching for lyrics content in page...")
+                    
+                    # Try primary selector
+                    lyrics_divs = lyrics_soup.find_all('span', {'class': 'lyrics__content__ok'})
+                    if lyrics_divs:
+                        lyrics = ''
+                        for div in lyrics_divs:
+                            lyrics += div.get_text() + '\n'
+                        print(f"   ✅ SUCCESS! Found lyrics with primary selector: {len(lyrics)} characters")
+                        return lyrics
+                        
+                    # Try alternative selectors
+                    lyrics_divs = lyrics_soup.select('.mxm-lyrics__content span')
+                    if lyrics_divs:
+                        lyrics = ''
+                        for div in lyrics_divs:
+                            lyrics += div.get_text() + '\n'
+                        print(f"   ✅ SUCCESS! Found lyrics with secondary selector: {len(lyrics)} characters")
+                        return lyrics
+                    
+                    # Try more generic content
+                    lyrics_content = lyrics_soup.select_one('.mxm-lyrics__content')
+                    if lyrics_content:
+                        lyrics = lyrics_content.get_text()
+                        print(f"   ✅ SUCCESS! Found lyrics with generic content selector: {len(lyrics)} characters")
+                        return lyrics
+                    
+                    print(f"   ❌ Found lyrics page but could not extract lyrics content")
+                else:
+                    print(f"   ❌ Found search results but could not extract result link")
+            else:
+                print(f"   ❌ No direct search results found")
+        except Exception as direct_error:
+            print(f"   ⚠️ Error in direct search: {direct_error}")
+                
+        # Fallback: Search on Google
         search_url = f"https://www.google.com/search?q=site:musixmatch.com+{search_query}"
+        print(f"   Google search URL: {search_url}")
+        
         response = requests.get(search_url, headers=headers)
+        print(f"   Google search response status: {response.status_code}")
+        
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # Find first musixmatch.com result
+        musixmatch_results = []
         for link in soup.find_all('a'):
             href = link.get('href')
             if href and 'musixmatch.com' in href and '/lyrics/' in href:
-                # Extract actual URL from Google redirect
-                musixmatch_url = href.split('&')[0].replace('/url?q=', '')
+                musixmatch_results.append(href)
+        
+        print(f"   Found {len(musixmatch_results)} Google search results for Musixmatch")
+        
+        if musixmatch_results:
+            # Extract actual URL from Google redirect
+            musixmatch_url = musixmatch_results[0].split('&')[0].replace('/url?q=', '')
+            print(f"   First Google result URL: {musixmatch_url}")
+            
+            # Get lyrics page
+            lyrics_response = requests.get(musixmatch_url, headers=headers)
+            print(f"   Lyrics page response status (via Google): {lyrics_response.status_code}")
+            
+            lyrics_soup = BeautifulSoup(lyrics_response.text, 'html.parser')
+            
+            # Find lyrics text
+            lyrics_divs = lyrics_soup.find_all('span', {'class': 'lyrics__content__ok'})
+            if lyrics_divs:
+                lyrics = ''
+                for div in lyrics_divs:
+                    lyrics += div.get_text() + '\n'
+                print(f"   ✅ SUCCESS via Google! Found lyrics: {len(lyrics)} characters")
+                return lyrics
                 
-                # Get lyrics page
-                lyrics_response = requests.get(musixmatch_url, headers=headers)
-                lyrics_soup = BeautifulSoup(lyrics_response.text, 'html.parser')
-                
-                # Find lyrics text
-                lyrics_divs = lyrics_soup.find_all('span', {'class': 'lyrics__content__ok'})
-                if lyrics_divs:
-                    lyrics = ''
-                    for div in lyrics_divs:
-                        lyrics += div.get_text() + '\n'
-                    print(f"Found lyrics on Musixmatch: {len(lyrics)} characters")
-                    return lyrics
-                    
-                # Try alternative selectors
-                lyrics_divs = lyrics_soup.select('.mxm-lyrics__content span')
-                if lyrics_divs:
-                    lyrics = ''
-                    for div in lyrics_divs:
-                        lyrics += div.get_text() + '\n'
-                    print(f"Found lyrics on Musixmatch (alt method): {len(lyrics)} characters")
-                    return lyrics
+            # Try alternative selectors
+            lyrics_divs = lyrics_soup.select('.mxm-lyrics__content span')
+            if lyrics_divs:
+                lyrics = ''
+                for div in lyrics_divs:
+                    lyrics += div.get_text() + '\n'
+                print(f"   ✅ SUCCESS via Google (alt method)! Found lyrics: {len(lyrics)} characters")
+                return lyrics
+            
+            print(f"   ❌ Found result page via Google but no lyrics content found")
+        else:
+            print(f"   ❌ No Musixmatch results found on Google")
+            
     except Exception as e:
-        print(f"Error searching Musixmatch: {e}")
+        import traceback
+        print(f"   ❌ ERROR searching Musixmatch: {e}")
+        print(traceback.format_exc())
     
-    print("No lyrics found on Musixmatch")
+    print("   ❌ No lyrics found on Musixmatch after all attempts")
     return None
 
 def format_song_title(artist: str, title: str) -> str:
@@ -363,29 +566,46 @@ def format_youtube_title(youtube_title: str) -> Tuple[str, str]:
     Try to extract artist and title from YouTube video title
     Returns tuple of (artist, title)
     """
+    print(f"\n🔍 Analyzing YouTube title: '{youtube_title}'")
+    
     # If the title ends with "- Topic", it's likely from YouTube Music
     # and the format is likely "Song Name - Artist Name - Topic"
     if youtube_title.endswith(" - Topic"):
         # This is a "- Topic" format which is an artist channel
-        # Try to extract the artist name from the channel name
         artist_name = youtube_title.replace(" - Topic", "").strip()
+        print(f"  ✅ Detected 'Topic' channel format! Artist: '{artist_name}'")
         return artist_name, youtube_title  # We'll try to get the song title elsewhere
     
     # Common patterns for YouTube music titles
     patterns = [
-        r'^(.+?)\s*[-–]\s*(.+?)(?:\s*\(.*?\))*$',  # Artist - Title (optional stuff)
+        r'^(.+?)\s*[-–]\s*(.+?)(?:\s*\(.*?\))*$',  # Artist - Title (optional stuff) 
         r'^(.+?)\s*"(.+?)"',  # Artist "Title"
         r'^(.+?)\s*:\s*(.+?)$',  # Artist: Title
     ]
     
-    for pattern in patterns:
+    pattern_names = [
+        "ARTIST - TITLE (optional stuff)",
+        "ARTIST \"TITLE\"",
+        "ARTIST: TITLE"
+    ]
+    
+    for i, pattern in enumerate(patterns):
+        print(f"  Trying pattern: {pattern_names[i]}")
         match = re.match(pattern, youtube_title)
         if match:
-            return match.group(1).strip(), match.group(2).strip()
+            artist = match.group(1).strip()
+            title = match.group(2).strip()
+            print(f"  ✅ Pattern matched! Artist: '{artist}', Title: '{title}'")
+            return artist, title
+        else:
+            print(f"  ❌ Pattern did not match")
     
     # Special case for "Topic" channels which are official artist channels
     if " - Topic" in youtube_title:
+        print(f"  Trying special case for Topic channel in title")
         parts = youtube_title.split(" - ")
+        print(f"  Split parts: {parts}")
+        
         if len(parts) >= 2:
             # Last part before "- Topic" is usually the artist
             artist_parts = []
@@ -399,7 +619,9 @@ def format_youtube_title(youtube_title: str) -> Tuple[str, str]:
                 artist = " ".join(artist_parts)
                 # The first part is usually the title
                 title = parts[0]
+                print(f"  ✅ Topic special case matched! Artist: '{artist}', Title: '{title}'")
                 return artist, title
     
     # If no pattern matches, return original as title with unknown artist
+    print(f"  ❌ No patterns matched. Using fallback: Artist='Unknown Artist', Title='{youtube_title.strip()}'")
     return "Unknown Artist", youtube_title.strip()

@@ -229,33 +229,62 @@ def edit_song(song_id):
 @app.route('/api/fetch_lyrics', methods=['POST'])
 def fetch_lyrics_api():
     """API endpoint to fetch lyrics"""
+    import sys
+    import io
+    import traceback
+    
     try:
         artist = request.json.get('artist')
         title = request.json.get('title')
         
         if not artist or not title:
             return {"error": "Artist and title are required"}, 400
-            
-        print(f"Fetching lyrics for: {artist} - {title}")
-        lyrics = search_for_lyrics(artist, title)
         
-        if lyrics:
-            return {
-                "success": True,
-                "lyrics": lyrics
-            }
-        else:
-            return {
-                "success": False,
-                "error": "No lyrics found"
-            }, 404
+        # Capture stdout to get all debugging information
+        old_stdout = sys.stdout
+        mystdout = io.StringIO()
+        sys.stdout = mystdout
+        
+        try:
+            print(f"API Request: Fetching lyrics for: {artist} - {title}")
+            lyrics = search_for_lyrics(artist, title)
+            
+            # Get the captured output
+            debug_output = mystdout.getvalue()
+            
+            # Return to normal stdout
+            sys.stdout = old_stdout
+            
+            if lyrics:
+                return {
+                    "success": True,
+                    "lyrics": lyrics,
+                    "debug_log": debug_output,
+                    "artist": artist,
+                    "title": title
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "No lyrics found",
+                    "debug_log": debug_output,
+                    "artist": artist,
+                    "title": title
+                }, 404
+                
+        finally:
+            # Make sure we restore stdout even if there's an exception
+            sys.stdout = old_stdout
+            
     except Exception as e:
-        import traceback
+        tb = traceback.format_exc()
         print(f"Error fetching lyrics: {str(e)}")
-        print(traceback.format_exc())
+        print(tb)
         return {
             "error": str(e),
-            "traceback": traceback.format_exc()
+            "traceback": tb,
+            "artist": artist if 'artist' in locals() else None,
+            "title": title if 'title' in locals() else None
         }, 400
 
 @app.route('/delete/<int:song_id>', methods=['POST'])

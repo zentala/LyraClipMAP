@@ -210,6 +210,23 @@
             lyricsStatus.textContent = "Searching for lyrics...";
             lyricsStatus.style.color = "#6200ee";
             
+            console.log(`Fetching lyrics for artist: "${artist}", title: "${title}"`);
+            
+            // Show detailed debug panel
+            const debugPanel = document.createElement('div');
+            debugPanel.className = 'lyrics-debug-panel';
+            debugPanel.style.backgroundColor = '#f5f5f5';
+            debugPanel.style.padding = '10px';
+            debugPanel.style.marginTop = '10px';
+            debugPanel.style.borderRadius = '4px';
+            debugPanel.style.fontSize = '12px';
+            debugPanel.style.fontFamily = 'monospace';
+            debugPanel.style.whiteSpace = 'pre-wrap';
+            debugPanel.style.maxHeight = '300px';
+            debugPanel.style.overflowY = 'auto';
+            debugPanel.innerHTML = '<strong>Fetching lyrics...</strong>\n';
+            lyricsStatus.appendChild(debugPanel);
+            
             // Fetch lyrics from API
             fetch('/api/fetch_lyrics', {
                 method: 'POST',
@@ -221,22 +238,58 @@
                     title: title
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log(`Response status: ${response.status}`);
+                debugPanel.innerHTML += `API Response status: ${response.status}\n`;
+                return response.json();
+            })
             .then(data => {
+                console.log('API Response:', data);
+                
+                // Add server logs to debug panel if available
+                if (data.debug_log) {
+                    debugPanel.innerHTML += `<details open><summary><b>Server Logs</b></summary><pre style="color:#333; background-color:#f9f9f9; padding:8px; border-radius:4px; max-height:500px; overflow:auto;">${data.debug_log}</pre></details>\n`;
+                }
+                
+                // Add traceback if there's an error
+                if (data.traceback) {
+                    debugPanel.innerHTML += `<span style="color:red">ERROR: ${data.error}</span>\n`;
+                    debugPanel.innerHTML += `<details><summary>Traceback</summary><pre style="color:red">${data.traceback}</pre></details>\n`;
+                }
+                
                 if (data.success && data.lyrics) {
                     // Update textarea
                     lyricsTextarea.value = data.lyrics;
                     lyricsStatus.textContent = "Lyrics found and added!";
                     lyricsStatus.style.color = "green";
+                    
+                    // Add debug info
+                    debugPanel.innerHTML += `<span style="color:green">✅ SUCCESS! Found lyrics (${data.lyrics.length} characters)</span>\n`;
+                    debugPanel.innerHTML += `<details><summary>Sample lyrics</summary><pre>${data.lyrics.substring(0, 200)}...</pre></details>\n`;
+                    
+                    // Reattach debug panel
+                    lyricsStatus.appendChild(debugPanel);
                 } else {
                     lyricsStatus.textContent = data.error || "No lyrics found. Try adjusting artist or title.";
                     lyricsStatus.style.color = "red";
+                    
+                    // Add debug info
+                    debugPanel.innerHTML += `<span style="color:red">❌ No lyrics found in response</span>\n`;
+                    
+                    // Reattach debug panel
+                    lyricsStatus.appendChild(debugPanel);
                 }
             })
             .catch(error => {
                 lyricsStatus.textContent = "Error fetching lyrics. Please try again.";
                 lyricsStatus.style.color = "red";
                 console.error('Error fetching lyrics:', error);
+                
+                // Add to debug panel
+                debugPanel.innerHTML += `<span style="color:red">❌ FETCH ERROR: ${error.message}</span>\n`;
+                
+                // Reattach debug panel
+                lyricsStatus.appendChild(debugPanel);
             });
         }
         
