@@ -5,11 +5,16 @@ import { AppModule } from '../../app.module';
 import { TestHelpers } from '../../tests/test-helpers';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import { Artist, Lyrics } from '@prisma/client';
 
 describe('SongsController (e2e)', () => {
   let app: INestApplication;
   let testHelpers: TestHelpers;
   let testData: any;
+  let prismaService: PrismaService;
+  let adminToken: string;
+  let artist: Artist;
+  let lyrics: Lyrics;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -19,17 +24,42 @@ describe('SongsController (e2e)', () => {
     app = moduleFixture.createNestApplication();
     await app.init();
 
-    const prismaService = moduleFixture.get<PrismaService>(PrismaService);
+    prismaService = moduleFixture.get<PrismaService>(PrismaService);
     const jwtService = moduleFixture.get<JwtService>(JwtService);
     testHelpers = new TestHelpers(prismaService, jwtService);
+    testData = await testHelpers.setupTestData();
+    adminToken = testData.adminToken;
+
+    // Create test artist
+    artist = await prismaService.artist.create({
+      data: {
+        name: 'Test Artist',
+        bio: 'Test artist bio'
+      }
+    });
+
+    // Create test lyrics
+    lyrics = await prismaService.lyrics.create({
+      data: {
+        content: '[00:00.00]Test lyrics\n[00:05.00]Second line',
+        lrc: '[00:00.00]Test lyrics\n[00:05.00]Second line',
+        timestamps: {}
+      }
+    });
   });
 
   beforeEach(async () => {
     testData = await testHelpers.setupTestData();
+    adminToken = testData.adminToken;
+    artist = testData.artist;
+    lyrics = testData.lyrics;
   });
 
   afterEach(async () => {
     await testHelpers.cleanupDatabase();
+    await prismaService.song.deleteMany();
+    await prismaService.lyrics.deleteMany();
+    await prismaService.artist.deleteMany();
   });
 
   afterAll(async () => {
@@ -221,6 +251,114 @@ describe('SongsController (e2e)', () => {
         .get('/songs/artist/999999')
         .set('Authorization', `Bearer ${testData.userToken}`)
         .expect(404);
+    });
+  });
+
+  describe('Song Management Pipeline', () => {
+    it('should create song with artist and lyrics', async () => {
+      // Tworzę nowe unikalne teksty dla tego testu
+      const newLyrics = await prismaService.lyrics.create({
+        data: {
+          content: 'Unique lyrics for first test',
+          lrc: '[00:00.00]Unique lyrics for first test',
+          timestamps: { '00:00': 'Unique lyrics for first test' },
+        }
+      });
+      
+      console.log('Artist ID used for test:', artist.id);
+      console.log('New Lyrics ID used for test:', newLyrics.id);
+      
+      const response = await request(app.getHttpServer())
+        .post('/songs')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          title: 'Test Song',
+          artistId: artist.id,
+          lyricsId: newLyrics.id,
+          audioUrl: 'https://example.com/audio.mp3',
+          duration: 180
+        });
+
+      console.log('Response status:', response.status);
+      console.log('Response body:', JSON.stringify(response.body, null, 2));
+      
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.title).toBe('Test Song');
+      expect(response.body.artistId).toBe(artist.id);
+      expect(response.body.lyricsId).toBe(newLyrics.id);
+      expect(response.body).toHaveProperty('artist');
+      expect(response.body.artist).toHaveProperty('id', artist.id);
+      expect(response.body.artist).toHaveProperty('name', artist.name);
+    });
+
+    it('should validate audio source processing', async () => {
+      const song = await request(app.getHttpServer())
+        .post('/songs')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          title: 'Audio Test Song',
+          artistId: artist.id,
+          audioUrl: 'https://example.com/audio.mp3'
+        });
+
+      expect(song.status).toBe(201);
+      expect(song.body.audioUrl).toBe('https://example.com/audio.mp3');
+      
+      // Verify audio source update
+      const updateResponse = await request(app.getHttpServer())
+        .patch(`/songs/${song.body.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          audioUrl: 'https://example.com/updated-audio.mp3'
+        });
+
+      expect(updateResponse.status).toBe(200);
+      expect(updateResponse.body.audioUrl).toBe('https://example.com/updated-audio.mp3');
+    });
+
+    it('should handle lyrics attachment and processing', async () => {
+      // Create song without lyrics first
+      const song = await request(app.getHttpServer())
+        .post('/songs')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          title: 'Lyrics Test Song',
+          artistId: artist.id,
+          audioUrl: 'https://example.com/audio.mp3',
+          duration: 180
+        });
+
+      console.log('Song without lyrics response:', JSON.stringify(song.body, null, 2));
+      
+      expect(song.status).toBe(201);
+      // Sprawdzamy, czy lyrics jest null lub undefined (oba są falsy)
+      expect(song.body.lyrics).toBeFalsy();
+
+      // Tworzę nowe unikalne teksty dla tego testu
+      const newLyrics = await prismaService.lyrics.create({
+        data: {
+          content: 'Unique lyrics for attachment test',
+          lrc: '[00:00.00]Unique lyrics for attachment test',
+          timestamps: { '00:00': 'Unique lyrics for attachment test' },
+        }
+      });
+
+      console.log('Created new lyrics with ID:', newLyrics.id);
+      
+      // Attach lyrics to the song
+      const updateResponse = await request(app.getHttpServer())
+        .patch(`/songs/${song.body.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          lyricsId: newLyrics.id
+        });
+
+      console.log('Updated song response:', JSON.stringify(updateResponse.body, null, 2));
+      
+      expect(updateResponse.status).toBe(200);
+      expect(updateResponse.body).toHaveProperty('lyrics');
+      expect(updateResponse.body.lyrics).toHaveProperty('id', newLyrics.id);
     });
   });
 }); 
