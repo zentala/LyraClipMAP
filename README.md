@@ -36,42 +36,51 @@
 ### Prerequisites
 - Python 3.8+
 - pip (Python package manager)
+- Python virtual environment package (for isolated dependencies)
 
-### Installation & Running
+### Installation & Running (Recommended Method)
 
-**Method 1: Using Python directly**
 ```bash
 # 1. Clone the repository
 git clone https://github.com/zentala/LyraClipMAP.git
 cd LyraClipMAP
 
-# 2. Install dependencies
-pip install -r requirements.txt
+# 2. Install virtual environment package if you don't have it
+sudo apt install python3-venv python3-full -y
 
-# 3. Run the application
-PYTHONPATH=/path/to/LyraClipMAP python3 app/main.py
-
-# 4. Open your browser and navigate to http://localhost:8000
-```
-
-**Method 2: Using virtual environment (recommended)**
-```bash
-# 1. Clone the repository
-git clone https://github.com/zentala/LyraClipMAP.git
-cd LyraClipMAP
-
-# 2. Create and activate virtual environment
-# On Ubuntu/Debian, you may need to install: sudo apt install python3-venv
+# 3. Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# 3. Install dependencies
+# 4. Install dependencies
 pip install -r requirements.txt
 
-# 4. Run the application
-python -m app.main
+# 5. Run the application
+PYTHONPATH=/home/zentala/code/LyraClipMAP python3 -m app.main
+# Or use your actual path to the project:
+# PYTHONPATH=/path/to/LyraClipMAP python3 -m app.main
 
-# 5. Open your browser and navigate to http://localhost:8000
+# 6. Open your browser and navigate to http://localhost:8000
+```
+
+### Alternative Methods
+
+**Running directly (not recommended in newer Python versions)**
+```bash
+# Install dependencies globally (may require --break-system-packages flag on newer systems)
+pip install -r requirements.txt --break-system-packages
+
+# Run the application
+PYTHONPATH=/path/to/LyraClipMAP python3 app/main.py
+```
+
+**Using pipx (for application-style installation)**
+```bash
+# Install pipx if you don't have it
+sudo apt install pipx
+
+# Use pipx to run the application in an isolated environment
+pipx run --spec -r requirements.txt flask run -p 8000 -h 0.0.0.0
 ```
 
 ## 🧰 Current Functionality
