@@ -219,7 +219,44 @@ def search_tekstowo(artist: str, title: str) -> Optional[str]:
     }
     
     try:
-        # Try direct search on tekstowo.pl first
+        # Try exact match first (direct URL pattern)
+        direct_url_pattern = f"https://www.tekstowo.pl/piosenka,{artist.lower().replace(' ', '_')},{title.lower().replace(' ', '_')}.html"
+        print(f"   Attempting direct URL match: {direct_url_pattern}")
+        
+        try:
+            direct_response = requests.get(direct_url_pattern, headers=headers)
+            print(f"   Direct URL response status: {direct_response.status_code}")
+            
+            if direct_response.status_code == 200:
+                direct_soup = BeautifulSoup(direct_response.text, 'html.parser')
+                
+                # Check if we got a lyrics page or a search results page
+                lyrics_div = direct_soup.find('div', {'class': 'inner-text'})
+                if lyrics_div:
+                    # Get the actual artist and title from the page
+                    song_info_div = direct_soup.find('div', {'id': 'song-info'})
+                    actual_artist = None
+                    actual_title = None
+                    
+                    if song_info_div:
+                        artist_elem = song_info_div.find('a', {'class': 'artist'})
+                        if artist_elem:
+                            actual_artist = artist_elem.text.strip()
+                        
+                        title_elem = song_info_div.find('h1')
+                        if title_elem:
+                            actual_title = title_elem.text.strip()
+                    
+                    print(f"   Direct URL match - Artist: '{actual_artist}', Title: '{actual_title}'")
+                    
+                    # If we have a match, return the lyrics
+                    lyrics = lyrics_div.get_text(strip=True)
+                    print(f"   ✅ SUCCESS via direct URL match! Found lyrics: {len(lyrics)} characters")
+                    return lyrics
+        except Exception as direct_url_error:
+            print(f"   ⚠️ Error trying direct URL: {direct_url_error}")
+        
+        # Try direct search on tekstowo.pl
         tekstowo_search_url = f"https://www.tekstowo.pl/szukaj,wykonawca,{artist.replace(' ', '+')},tytul,{title.replace(' ', '+')}.html"
         print(f"   Direct search URL: {tekstowo_search_url}")
         
@@ -228,16 +265,64 @@ def search_tekstowo(artist: str, title: str) -> Optional[str]:
         
         search_soup = BeautifulSoup(search_response.text, 'html.parser')
         
-        # Look for search results
-        result_links = search_soup.select('a.title')
-        print(f"   Found {len(result_links)} direct search results")
+        # Look for search results - specifically looking for results that match our search terms
+        all_result_links = search_soup.select('.content a.title')
+        print(f"   Found {len(all_result_links)} total direct search results")
         
-        if result_links:
-            # Get the first result
-            first_result = result_links[0]
-            result_title = first_result.text.strip()
-            result_url = "https://www.tekstowo.pl" + first_result.get('href')
-            print(f"   First result: '{result_title}' at {result_url}")
+        # Filter results to find more accurate matches
+        filtered_results = []
+        for link in all_result_links:
+            result_title = link.text.strip()
+            result_href = link.get('href')
+            result_artist = None
+            
+            # Try to get artist from parent elements
+            parent_box = link.find_parent('div', class_='box-przeboje')
+            if parent_box:
+                artist_link = parent_box.select_one('a.artyst')
+                if artist_link:
+                    result_artist = artist_link.text.strip()
+            
+            # Print all results for debugging
+            print(f"   Result: '{result_title}' - Artist: '{result_artist}'")
+            
+            # If we found an artist match, prioritize it
+            if result_artist and result_artist.lower() == artist.lower():
+                # This is a direct match for our artist, add it with high priority
+                filtered_results.insert(0, {
+                    'title': result_title,
+                    'href': result_href,
+                    'artist': result_artist,
+                    'score': 100  # Highest priority
+                })
+            # If title contains our search title, add it
+            elif title.lower() in result_title.lower():
+                filtered_results.append({
+                    'title': result_title,
+                    'href': result_href,
+                    'artist': result_artist,
+                    'score': 50
+                })
+            # Otherwise, add it with low priority
+            else:
+                filtered_results.append({
+                    'title': result_title,
+                    'href': result_href,
+                    'artist': result_artist,
+                    'score': 10
+                })
+        
+        print(f"   Found {len(filtered_results)} filtered results")
+        
+        if filtered_results:
+            # Sort by score (highest first)
+            filtered_results.sort(key=lambda x: x['score'], reverse=True)
+            
+            # Get the highest scoring result
+            best_result = filtered_results[0]
+            result_title = best_result['title']
+            result_url = "https://www.tekstowo.pl" + best_result['href']
+            print(f"   Best match: '{result_title}' (score: {best_result['score']}) at {result_url}")
             
             # Get lyrics page
             lyrics_response = requests.get(result_url, headers=headers)
@@ -249,8 +334,45 @@ def search_tekstowo(artist: str, title: str) -> Optional[str]:
             lyrics_div = lyrics_soup.find('div', {'class': 'inner-text'})
             if lyrics_div:
                 lyrics = lyrics_div.get_text(strip=True)
-                print(f"   ✅ SUCCESS via direct search! Found lyrics: {len(lyrics)} characters")
-                return lyrics
+                
+                # Verify if it's a reasonable match by checking the page metadata
+                song_info_div = lyrics_soup.find('div', {'id': 'song-info'})
+                actual_artist = None
+                actual_title = None
+                
+                if song_info_div:
+                    artist_elem = song_info_div.find('a', {'class': 'artist'})
+                    if artist_elem:
+                        actual_artist = artist_elem.text.strip()
+                    
+                    title_elem = song_info_div.find('h1')
+                    if title_elem:
+                        actual_title = title_elem.text.strip()
+                
+                print(f"   Page metadata - Artist: '{actual_artist}', Title: '{actual_title}'")
+                
+                # Validate the match
+                artist_match = actual_artist and (
+                    actual_artist.lower() == artist.lower() or 
+                    artist.lower() in actual_artist.lower() or 
+                    actual_artist.lower() in artist.lower()
+                )
+                
+                title_match = actual_title and (
+                    actual_title.lower() == title.lower() or
+                    title.lower() in actual_title.lower() or
+                    actual_title.lower() in title.lower()
+                )
+                
+                if artist_match or title_match:
+                    print(f"   ✅ SUCCESS via direct search! Found lyrics: {len(lyrics)} characters")
+                    if actual_artist and actual_artist != artist:
+                        print(f"   ℹ️ Note: Found lyrics for artist '{actual_artist}' instead of '{artist}'")
+                    if actual_title and actual_title != title:
+                        print(f"   ℹ️ Note: Found lyrics for title '{actual_title}' instead of '{title}'")
+                    return lyrics
+                else:
+                    print(f"   ⚠️ Found lyrics but metadata doesn't match our search. Continuing search...")
             else:
                 print(f"   ❌ Found result page but no lyrics div found")
         else:
@@ -289,8 +411,45 @@ def search_tekstowo(artist: str, title: str) -> Optional[str]:
             lyrics_div = lyrics_soup.find('div', {'class': 'inner-text'})
             if lyrics_div:
                 lyrics = lyrics_div.get_text(strip=True)
-                print(f"   ✅ SUCCESS via Google! Found lyrics: {len(lyrics)} characters")
-                return lyrics
+                
+                # Verify if it's a reasonable match by checking the page metadata
+                song_info_div = lyrics_soup.find('div', {'id': 'song-info'})
+                actual_artist = None
+                actual_title = None
+                
+                if song_info_div:
+                    artist_elem = song_info_div.find('a', {'class': 'artist'})
+                    if artist_elem:
+                        actual_artist = artist_elem.text.strip()
+                    
+                    title_elem = song_info_div.find('h1')
+                    if title_elem:
+                        actual_title = title_elem.text.strip()
+                
+                print(f"   Page metadata (Google search) - Artist: '{actual_artist}', Title: '{actual_title}'")
+                
+                # Validate the match
+                artist_match = actual_artist and (
+                    actual_artist.lower() == artist.lower() or 
+                    artist.lower() in actual_artist.lower() or 
+                    actual_artist.lower() in artist.lower()
+                )
+                
+                title_match = actual_title and (
+                    actual_title.lower() == title.lower() or
+                    title.lower() in actual_title.lower() or
+                    actual_title.lower() in title.lower()
+                )
+                
+                if artist_match or title_match:
+                    print(f"   ✅ SUCCESS via Google! Found lyrics: {len(lyrics)} characters")
+                    if actual_artist and actual_artist != artist:
+                        print(f"   ℹ️ Note: Found lyrics for artist '{actual_artist}' instead of '{artist}'")
+                    if actual_title and actual_title != title:
+                        print(f"   ℹ️ Note: Found lyrics for title '{actual_title}' instead of '{title}'")
+                    return lyrics
+                else:
+                    print(f"   ⚠️ Found lyrics via Google but metadata doesn't match our search.")
             else:
                 print(f"   ❌ Found result page via Google but no lyrics div found")
     except Exception as e:
