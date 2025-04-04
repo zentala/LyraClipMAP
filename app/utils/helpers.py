@@ -9,6 +9,10 @@ def extract_youtube_info(url: str) -> Dict[str, str]:
     Extract video ID and other info from YouTube URL
     Returns dict with video details
     """
+    # Clean up the URL by removing parameters like playlist and start_radio
+    url = clean_youtube_url(url)
+    print(f"Cleaned YouTube URL: {url}")
+    
     # Extract video ID from different YouTube URL formats
     parsed_url = urllib.parse.urlparse(url)
     video_id = None
@@ -18,17 +22,12 @@ def extract_youtube_info(url: str) -> Dict[str, str]:
             query = urllib.parse.parse_qs(parsed_url.query)
             if 'v' in query:
                 video_id = query['v'][0]
-                # Remove any additional parameters if present
-                if '&' in video_id:
-                    video_id = video_id.split('&')[0]
         elif parsed_url.path.startswith(('/embed/', '/v/')):
             video_id = parsed_url.path.split('/')[2]
-            # Remove any additional parameters if present
             if '?' in video_id:
                 video_id = video_id.split('?')[0]
     elif parsed_url.hostname == 'youtu.be':
         video_id = parsed_url.path[1:]
-        # Remove any additional parameters if present
         if '?' in video_id:
             video_id = video_id.split('?')[0]
     
@@ -37,6 +36,41 @@ def extract_youtube_info(url: str) -> Dict[str, str]:
     
     if not video_id:
         raise ValueError("Invalid YouTube URL")
+        
+def clean_youtube_url(url: str) -> str:
+    """
+    Clean YouTube URL by removing unnecessary parameters like playlist and start_radio
+    Returns cleaned URL with only the video ID
+    """
+    try:
+        # Parse the URL
+        parsed_url = urllib.parse.urlparse(url)
+        
+        # Only process YouTube URLs
+        if parsed_url.hostname not in ('www.youtube.com', 'youtube.com', 'youtu.be'):
+            return url
+            
+        # If it's a /watch URL, extract just the video ID and rebuild the URL
+        if parsed_url.hostname in ('www.youtube.com', 'youtube.com') and parsed_url.path == '/watch':
+            query_params = urllib.parse.parse_qs(parsed_url.query)
+            if 'v' in query_params:
+                video_id = query_params['v'][0]
+                return f"https://www.youtube.com/watch?v={video_id}"
+        
+        # If it's a youtu.be URL, extract just the path and rebuild
+        elif parsed_url.hostname == 'youtu.be':
+            path = parsed_url.path
+            if path and path.startswith('/'):
+                video_id = path[1:]
+                if '?' in video_id:
+                    video_id = video_id.split('?')[0]
+                return f"https://youtu.be/{video_id}"
+    
+    except Exception as e:
+        print(f"Error cleaning YouTube URL: {e}")
+    
+    # If anything goes wrong, return the original URL
+    return url
     
     # Try to use oembed endpoint to get structured data (no API key needed)
     # This is one of the most reliable methods without using the official API
@@ -234,10 +268,12 @@ def search_tekstowo(artist: str, title: str) -> Optional[str]:
                 lyrics_div = direct_soup.find('div', {'class': 'inner-text'})
                 if lyrics_div:
                     # Get the actual artist and title from the page
-                    song_info_div = direct_soup.find('div', {'id': 'song-info'})
+                    # The structure of the site has changed, so we need to try multiple methods
                     actual_artist = None
                     actual_title = None
                     
+                    # First method: Try the traditional song-info structure
+                    song_info_div = direct_soup.find('div', {'id': 'song-info'})
                     if song_info_div:
                         artist_elem = song_info_div.find('a', {'class': 'artist'})
                         if artist_elem:
@@ -246,6 +282,30 @@ def search_tekstowo(artist: str, title: str) -> Optional[str]:
                         title_elem = song_info_div.find('h1')
                         if title_elem:
                             actual_title = title_elem.text.strip()
+                    
+                    # Alternative method: Extract from the page title
+                    if not actual_artist or not actual_title:
+                        page_title = direct_soup.find('title')
+                        if page_title:
+                            title_text = page_title.text.strip()
+                            # Remove common suffixes
+                            for suffix in [' - tekst i tłumaczenie piosenki na Tekstowo.pl', ' - tekst piosenki na Tekstowo.pl']:
+                                if suffix in title_text:
+                                    title_text = title_text.replace(suffix, '')
+                            
+                            # Try to split by dash
+                            if ' - ' in title_text:
+                                parts = title_text.split(' - ', 1)
+                                actual_artist = parts[0].strip()
+                                actual_title = parts[1].strip()
+                    
+                    # Third method: Try to extract from H1
+                    if not actual_artist or not actual_title:
+                        h1_elem = direct_soup.find('h1')
+                        if h1_elem and ' - ' in h1_elem.text:
+                            parts = h1_elem.text.strip().split(' - ', 1)
+                            actual_artist = parts[0].strip()
+                            actual_title = parts[1].strip()
                     
                     print(f"   Direct URL match - Artist: '{actual_artist}', Title: '{actual_title}'")
                     
@@ -336,10 +396,12 @@ def search_tekstowo(artist: str, title: str) -> Optional[str]:
                 lyrics = lyrics_div.get_text(strip=True)
                 
                 # Verify if it's a reasonable match by checking the page metadata
-                song_info_div = lyrics_soup.find('div', {'id': 'song-info'})
+                # The structure of the site has changed, so we need to try multiple methods
                 actual_artist = None
                 actual_title = None
                 
+                # First method: Try the traditional song-info structure
+                song_info_div = lyrics_soup.find('div', {'id': 'song-info'})
                 if song_info_div:
                     artist_elem = song_info_div.find('a', {'class': 'artist'})
                     if artist_elem:
@@ -348,6 +410,30 @@ def search_tekstowo(artist: str, title: str) -> Optional[str]:
                     title_elem = song_info_div.find('h1')
                     if title_elem:
                         actual_title = title_elem.text.strip()
+                
+                # Alternative method: Extract from the page title
+                if not actual_artist or not actual_title:
+                    page_title = lyrics_soup.find('title')
+                    if page_title:
+                        title_text = page_title.text.strip()
+                        # Remove common suffixes
+                        for suffix in [' - tekst i tłumaczenie piosenki na Tekstowo.pl', ' - tekst piosenki na Tekstowo.pl']:
+                            if suffix in title_text:
+                                title_text = title_text.replace(suffix, '')
+                        
+                        # Try to split by dash
+                        if ' - ' in title_text:
+                            parts = title_text.split(' - ', 1)
+                            actual_artist = parts[0].strip()
+                            actual_title = parts[1].strip()
+                
+                # Third method: Try to extract from H1
+                if not actual_artist or not actual_title:
+                    h1_elem = lyrics_soup.find('h1')
+                    if h1_elem and ' - ' in h1_elem.text:
+                        parts = h1_elem.text.strip().split(' - ', 1)
+                        actual_artist = parts[0].strip()
+                        actual_title = parts[1].strip()
                 
                 print(f"   Page metadata - Artist: '{actual_artist}', Title: '{actual_title}'")
                 

@@ -30,6 +30,64 @@ def search():
     ).distinct().all()
     
     return render_template('search_results.html', results=results, query=query)
+    
+@app.route('/api/search/autocomplete')
+def search_autocomplete():
+    """API endpoint for search autocomplete"""
+    query = request.args.get('q', '')
+    
+    if not query or len(query) < 2:
+        return {"results": []}, 200
+        
+    # Limit to 10 results
+    limit = 10
+    results = []
+    
+    # Search for songs by title (highest priority)
+    songs_by_title = Song.query.filter(Song.title.ilike(f"%{query}%")).limit(limit).all()
+    for song in songs_by_title:
+        results.append({
+            "type": "song",
+            "title": song.title,
+            "subtitle": f"Song by {song.artist}",
+            "url": f"/song/{song.id}",
+            "id": song.id
+        })
+        
+    # Search for artists
+    if len(results) < limit:
+        remaining = limit - len(results)
+        artists = db.session.query(Song.artist, db.func.count(Song.id).label('song_count')).filter(
+            Song.artist.ilike(f"%{query}%")
+        ).group_by(Song.artist).order_by(db.desc('song_count')).limit(remaining).all()
+        
+        for artist, count in artists:
+            results.append({
+                "type": "artist",
+                "title": artist,
+                "subtitle": f"{count} song{'s' if count > 1 else ''}",
+                "query": artist
+            })
+            
+    # Search for lyrics (lowest priority but still useful)
+    if len(results) < limit:
+        remaining = limit - len(results)
+        lyrics_matches = Song.query.join(Song.text_contents).filter(
+            TextContent.content.ilike(f"%{query}%")
+        ).limit(remaining).all()
+        
+        for song in lyrics_matches:
+            # Only add if not already in results
+            if not any(r.get('id') == song.id for r in results if 'id' in r):
+                results.append({
+                    "type": "lyrics",
+                    "title": song.title,
+                    "subtitle": f"Lyrics match in song by {song.artist}",
+                    "url": f"/song/{song.id}",
+                    "id": song.id
+                })
+    
+    return {"results": results}, 200
 
 @app.route('/song/<int:song_id>')
 def view_song(song_id):
@@ -304,7 +362,32 @@ def delete_song(song_id):
 def material_home():
     """Home page with Material Design UI"""
     songs = Song.query.order_by(desc(Song.id)).all()
-    return render_template('material_index.html', songs=songs)
+    
+    # Get thumbnails and video info for each song
+    songs_with_info = []
+    for song in songs:
+        song_info = {
+            'id': song.id,
+            'title': song.title,
+            'artist': song.artist,
+            'thumbnail': None,
+            'video_id': None
+        }
+        
+        # Look for YouTube sources
+        for source in song.audio_sources:
+            if source.source_type == "youtube":
+                try:
+                    yt_info = extract_youtube_info(source.url)
+                    song_info['thumbnail'] = yt_info.get('thumbnail')
+                    song_info['video_id'] = yt_info.get('video_id')
+                    break
+                except:
+                    continue
+        
+        songs_with_info.append(song_info)
+    
+    return render_template('material_index.html', songs=songs_with_info)
     
 @app.route('/material/song/<int:song_id>')
 def material_view_song(song_id):

@@ -429,9 +429,19 @@
                         urlPreview.appendChild(debugInfo);
                         
                         if (data.thumbnail) {
+                            console.log("Setting thumbnail image:", data.thumbnail);
                             previewThumbnail.style.backgroundImage = `url(${data.thumbnail})`;
                             previewThumbnail.style.backgroundSize = 'cover';
                             previewThumbnail.style.backgroundPosition = 'center';
+                            // Ensure the thumbnail is visible
+                            previewThumbnail.style.display = 'block';
+                            // Add image fallback
+                            previewThumbnail.innerHTML = `<img src="${data.thumbnail}" alt="Thumbnail" style="display:none; width:100%; height:100%; object-fit:cover;" onerror="this.parentNode.style.backgroundColor='#e0e0e0';" onload="this.style.display='block';">`;
+                        } else {
+                            // No thumbnail available, use a placeholder
+                            previewThumbnail.style.backgroundImage = 'none';
+                            previewThumbnail.style.backgroundColor = '#e0e0e0';
+                            previewThumbnail.innerHTML = '<span class="material-icons" style="display:flex; width:100%; height:100%; align-items:center; justify-content:center; color:#999;">music_note</span>';
                         }
                         
                         // Auto-fill form fields if they're empty
