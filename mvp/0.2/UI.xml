@@ -1,0 +1,718 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<UIDesign xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Application name="LyraClipMAP">
+    <Description>
+      Visual interface designs for the LyraClipMAP music library application with synchronized lyrics,
+      audio visualization, and multi-source integration.
+    </Description>
+    
+    <!-- SCREENS -->
+    <Screens>
+      <!-- Dashboard/Home Screen -->
+      <Screen id="home">
+        <Name>Home Dashboard</Name>
+        <Description>
+          The main landing page showing recently added songs, popular tracks, and user playlists.
+        </Description>
+        <Wireframe>
+          <Header>
+            <AppBar>
+              <Logo position="left" size="medium" />
+              <Title position="left">LyraClipMAP</Title>
+              <SearchBar position="center" expandable="true" placeholder="Search songs, artists, or lyrics..." />
+              <ThemeToggle position="right" />
+              <UserAvatar position="right" showMenu="true" />
+            </AppBar>
+            <NavigationDrawer position="left" type="rail" expandable="true">
+              <NavItem icon="home" label="Home" selected="true" />
+              <NavItem icon="music-note" label="Songs" />
+              <NavItem icon="playlist-music" label="Playlists" />
+              <NavItem icon="account-music" label="Artists" />
+              <NavItem icon="history" label="Recent" />
+              <Spacer flex="1" />
+              <NavItem icon="music-note-plus" label="Add Song" highlight="true" />
+            </NavigationDrawer>
+          </Header>
+          
+          <Content>
+            <HeroSection>
+              <BackgroundImage src="music-banner.jpg" overlay="dark" />
+              <Title position="bottom-left">Welcome to LyraClipMAP</Title>
+              <Subtitle position="bottom-left">Your personal music library with synchronized lyrics</Subtitle>
+              <ActionButton variant="primary" icon="music-note-plus" label="Add Song" />
+              <ActionButton variant="secondary" icon="magnify" label="Search Library" />
+            </HeroSection>
+            
+            <Section title="Recently Added" icon="clock-outline" actionLabel="View All" actionLink="/songs?sort=recent">
+              <Grid columns="1:xs 2:sm 3:md 4:lg">
+                <SongCard repeat="4" />
+              </Grid>
+            </Section>
+            
+            <Section title="Your Playlists" icon="playlist-star" actionLabel="View All" actionLink="/playlists" conditional="isLoggedIn">
+              <Grid columns="1:xs 2:sm 3:md 4:lg">
+                <PlaylistCard repeat="4" />
+              </Grid>
+            </Section>
+            
+            <Section title="Popular Songs" icon="trending-up" actionLabel="View All" actionLink="/songs?sort=popular">
+              <Grid columns="1:xs 2:sm 3:md 4:lg">
+                <SongCard repeat="4" />
+              </Grid>
+            </Section>
+          </Content>
+          
+          <Footer>
+            <Copyright>© 2023 LyraClipMAP</Copyright>
+            <SocialLinks>
+              <IconLink icon="github" url="https://github.com/yourusername/LyraClipMAP" />
+              <IconLink icon="help-circle" action="showHelpDialog" />
+            </SocialLinks>
+          </Footer>
+          
+          <MiniPlayer visible="hasActiveSong">
+            <Thumbnail src="songThumbnail" size="small" />
+            <SongInfo>
+              <Title>Current Song Title</Title>
+              <Artist>Artist Name</Artist>
+            </SongInfo>
+            <PlaybackControls>
+              <Button icon="skip-previous" action="previousSong" />
+              <Button icon="play-pause" action="togglePlay" primary="true" />
+              <Button icon="skip-next" action="nextSong" />
+            </PlaybackControls>
+            <ExtraControls>
+              <Button icon="text" action="toggleLyrics" />
+              <Button icon="arrow-expand" action="expandPlayer" />
+            </ExtraControls>
+            <ProgressBar value="30" />
+          </MiniPlayer>
+        </Wireframe>
+      </Screen>
+      
+      <!-- Song Detail Screen -->
+      <Screen id="song_detail">
+        <Name>Song Detail</Name>
+        <Description>
+          Detailed view of a song with player, lyrics, and song information.
+        </Description>
+        <Wireframe>
+          <Content>
+            <HeaderCard>
+              <Row>
+                <Column width="60%">
+                  <BackButton icon="arrow-left" />
+                  <Title size="large">Song Title</Title>
+                  <Subtitle>Artist Name</Subtitle>
+                  <TagGroup>
+                    <Tag primary="true">YouTube</Tag>
+                    <Tag outlined="true" conditional="hasLyrics">Has Lyrics</Tag>
+                  </TagGroup>
+                  <Divider />
+                  <ButtonGroup>
+                    <Button primary="true" icon="pencil" label="Edit Song" />
+                    <Button outlined="true" icon="playlist-plus" label="Add to Playlist" />
+                  </ButtonGroup>
+                </Column>
+                <Column width="40%">
+                  <Image src="songThumbnail" aspectRatio="16:9" />
+                </Column>
+              </Row>
+            </HeaderCard>
+            
+            <TabContainer>
+              <Tab id="player" icon="play" label="Player" selected="true">
+                <PlayerView>
+                  <YouTubeEmbed condition="isYouTubeSource" aspectRatio="16:9" />
+                  <WavePlayer condition="!isYouTubeSource">
+                    <Waveform color="#A0AEC0" progressColor="#6200EA" />
+                    <Controls>
+                      <PlayButton />
+                      <TimeDisplay />
+                      <SeekBar />
+                      <VolumeControl />
+                    </Controls>
+                  </WavePlayer>
+                </PlayerView>
+              </Tab>
+              
+              <Tab id="lyrics" icon="text" label="Lyrics" disabled="!hasLyrics">
+                <LyricsView>
+                  <Toolbar>
+                    <Title>Lyrics</Title>
+                    <Spacer />
+                    <ButtonGroup>
+                      <Button icon="sync" label="Refresh" />
+                      <Button icon="pencil" label="Edit" />
+                    </ButtonGroup>
+                  </Toolbar>
+                  <LyricsText format="preformatted">
+                    Song lyrics content goes here...
+                    Multiple lines of text
+                    That preserve formatting
+                  </LyricsText>
+                </LyricsView>
+              </Tab>
+              
+              <Tab id="synchronized" icon="music-note" label="Karaoke" disabled="!hasSynchronizedLyrics">
+                <KaraokeView>
+                  <Toolbar>
+                    <Title>Synchronized Lyrics</Title>
+                    <Spacer />
+                    <ButtonGroup>
+                      <ToggleButton value="scroll" icon="format-list-text" label="Scroll" />
+                      <ToggleButton value="karaoke" icon="music-note" label="Karaoke" />
+                    </ButtonGroup>
+                    <Button icon="translate" toggle="true" />
+                  </Toolbar>
+                  <SynchronizedLyrics mode="scroll" showTranslation="false" height="400px">
+                    <LyricLine time="0.0" active="false">First line of lyrics</LyricLine>
+                    <LyricLine time="5.0" active="true">
+                      <Word highlighted="true">Currently</Word>
+                      <Word highlighted="true">active</Word>
+                      <Word highlighted="false">line</Word>
+                    </LyricLine>
+                    <LyricLine time="10.0" active="false">Next line of lyrics</LyricLine>
+                  </SynchronizedLyrics>
+                </KaraokeView>
+              </Tab>
+              
+              <Tab id="info" icon="information" label="Info">
+                <InfoView>
+                  <Title>Song Information</Title>
+                  <InfoList>
+                    <InfoItem icon="music" label="Title" value="Song Title" />
+                    <InfoItem icon="account-music" label="Artist" value="Artist Name" />
+                    <InfoItem icon="youtube" label="Source" value="https://youtube.com/watch?v=..." isLink="true" />
+                    <InfoItem icon="calendar" label="Added on" value="Jan 1, 2023" />
+                    <InfoItem icon="text" label="Description" value="Song description text..." condition="hasDescription" />
+                  </InfoList>
+                </InfoView>
+              </Tab>
+            </TabContainer>
+          </Content>
+          
+          <Dialogs>
+            <Dialog id="editLyrics" fullscreen="true">
+              <Toolbar color="primary" dark="true">
+                <CloseButton icon="close" />
+                <Title>Edit Lyrics</Title>
+                <Spacer />
+                <SaveButton label="Save" />
+              </Toolbar>
+              <TextEditor multiline="true" placeholder="Enter lyrics here..." rows="25" />
+            </Dialog>
+            
+            <Dialog id="addToPlaylist">
+              <Title>Add to Playlist</Title>
+              <Content>
+                <Select label="Select Playlist" condition="hasPlaylists" />
+                <InfoText condition="!hasPlaylists">You don't have any playlists yet</InfoText>
+                <Divider />
+                <TextField label="Or create a new playlist" icon="playlist-plus" />
+              </Content>
+              <Actions>
+                <Button label="Cancel" action="closeDialog" />
+                <Button label="Add" primary="true" action="addToPlaylist" />
+              </Actions>
+            </Dialog>
+          </Dialogs>
+        </Wireframe>
+      </Screen>
+      
+      <!-- Add Song Screen -->
+      <Screen id="add_song">
+        <Name>Add Song</Name>
+        <Description>
+          Form for adding a new song to the library with YouTube URL extraction.
+        </Description>
+        <Wireframe>
+          <Content>
+            <Card>
+              <Header>
+                <BackButton icon="arrow-left" />
+                <Title>Add New Song</Title>
+              </Header>
+              <Divider />
+              
+              <Form submit="saveSong">
+                <TextField
+                  label="YouTube URL"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  hint="Enter a YouTube URL to automatically extract song information"
+                  icon="youtube"
+                  required="true"
+                />
+                
+                <Button
+                  primary="true"
+                  icon="magnify"
+                  label="Preview & Extract Info"
+                  loading="isExtracting"
+                  centered="true"
+                />
+                
+                <PreviewCard condition="hasPreviewData">
+                  <Row>
+                    <Column width="33%">
+                      <Image src="previewThumbnail" />
+                    </Column>
+                    <Column width="67%">
+                      <Title>Video Title</Title>
+                      <Subtitle>Channel Name</Subtitle>
+                      <Divider />
+                      <MetadataItem label="Detected artist" value="Artist Name" />
+                      <MetadataItem label="Detected title" value="Song Title" />
+                    </Column>
+                  </Row>
+                </PreviewCard>
+                
+                <Row>
+                  <Column width="50%">
+                    <TextField
+                      label="Song Title"
+                      placeholder="Enter song title"
+                      icon="music-note"
+                      required="true"
+                    />
+                  </Column>
+                  <Column width="50%">
+                    <TextField
+                      label="Artist Name"
+                      placeholder="Enter artist name"
+                      icon="account-music"
+                      required="true"
+                    />
+                  </Column>
+                </Row>
+                
+                <ExpansionPanel title="Lyrics (Optional)">
+                  <ButtonGroup>
+                    <Button
+                      outlined="true"
+                      icon="magnify"
+                      label="Search for Lyrics"
+                      loading="isSearchingLyrics"
+                    />
+                    <Select
+                      label="Source"
+                      options="['Genius', 'Tekstowo', 'Musixmatch']"
+                      compact="true"
+                    />
+                  </ButtonGroup>
+                  
+                  <Textarea
+                    label="Lyrics"
+                    placeholder="Enter lyrics manually or search automatically"
+                    rows="10"
+                    hint="Leave empty to try to find lyrics automatically when saving"
+                  />
+                </ExpansionPanel>
+                
+                <ActionButtons align="end" spacing="2">
+                  <Button label="Reset" action="resetForm" />
+                  <Button label="Cancel" outlined="true" action="goBack" />
+                  <Button label="Save Song" primary="true" type="submit" loading="isSaving" />
+                </ActionButtons>
+              </Form>
+            </Card>
+          </Content>
+        </Wireframe>
+      </Screen>
+      
+      <!-- Song List Screen -->
+      <Screen id="song_list">
+        <Name>Song List</Name>
+        <Description>
+          Browse and filter the song library with grid and list view options.
+        </Description>
+        <Wireframe>
+          <Content>
+            <Header>
+              <Title>My Songs</Title>
+              <Spacer />
+              <ViewToggle>
+                <ToggleButton icon="view-grid" label="Grid" />
+                <ToggleButton icon="view-list" label="List" />
+              </ViewToggle>
+              <Button primary="true" icon="music-note-plus" label="Add Song" />
+            </Header>
+            
+            <Card>
+              <FilterPanel>
+                <Row>
+                  <Column width="33%">
+                    <TextField
+                      label="Filter by title or artist"
+                      icon="magnify"
+                      compact="true"
+                      clearable="true"
+                    />
+                  </Column>
+                  <Column width="25%">
+                    <Select
+                      label="Sort by"
+                      options="['Recently Added', 'Title', 'Artist', 'Duration']"
+                      compact="true"
+                    />
+                  </Column>
+                  <Column width="25%">
+                    <Select
+                      label="Filter by artist"
+                      options="artistList"
+                      compact="true"
+                      clearable="true"
+                    />
+                  </Column>
+                  <Column width="17%">
+                    <ToggleButton
+                      icon="sort-ascending"
+                      label="Ascending"
+                      alternateIcon="sort-descending"
+                      alternateLabel="Descending"
+                    />
+                  </Column>
+                </Row>
+              </FilterPanel>
+              
+              <Divider />
+              
+              <GridView condition="viewMode === 'grid'">
+                <Grid columns="1:xs 2:sm 3:md 4:lg">
+                  <SongCard repeat="12" actions="play,menu" />
+                </Grid>
+              </GridView>
+              
+              <ListView condition="viewMode === 'list'">
+                <Table>
+                  <Columns>
+                    <Column header="Title" width="40%" />
+                    <Column header="Artist" width="30%" />
+                    <Column header="Date Added" width="20%" />
+                    <Column header="Actions" width="10%" />
+                  </Columns>
+                  <Rows>
+                    <Row repeat="10" clickable="true">
+                      <Cell>
+                        <Thumbnail size="small" />
+                        <Text>Song Title</Text>
+                      </Cell>
+                      <Cell>Artist Name</Cell>
+                      <Cell>Jan 1, 2023</Cell>
+                      <Cell>
+                        <IconButton icon="play" />
+                        <IconButton icon="pencil" />
+                        <IconButton icon="delete" color="error" />
+                      </Cell>
+                    </Row>
+                  </Rows>
+                </Table>
+              </ListView>
+              
+              <Pagination total="5" current="1" visible="7" condition="totalPages > 1" />
+            </Card>
+          </Content>
+        </Wireframe>
+      </Screen>
+      
+      <!-- Lyrics Synchronization Editor -->
+      <Screen id="lyrics_editor">
+        <Name>Lyrics Synchronization Editor</Name>
+        <Description>
+          Tool for creating time-synchronized lyrics by marking timestamps.
+        </Description>
+        <Wireframe>
+          <Content>
+            <Card>
+              <Header>
+                <BackButton icon="arrow-left" />
+                <Title>Lyrics Synchronization Editor</Title>
+                <Subtitle>Song Title - Artist Name</Subtitle>
+              </Header>
+              <Divider />
+              
+              <Row>
+                <Column width="60%">
+                  <Card>
+                    <WavePlayer height="120px" regions="true" markers="true">
+                      <Waveform color="#A0AEC0" progressColor="#6200EA" />
+                      <Controls>
+                        <PlayButton />
+                        <TimeDisplay />
+                        <SeekBar />
+                        <VolumeControl />
+                      </Controls>
+                    </WavePlayer>
+                    
+                    <Toolbar>
+                      <Button icon="play-speed" label="0.75x" />
+                      <Button icon="repeat" label="Loop Selection" toggle="true" />
+                      <Spacer />
+                      <Button icon="marker" label="Add Marker" primary="true" />
+                      <Button icon="format-line-spacing" label="Auto-Split Lines" />
+                    </Toolbar>
+                    
+                    <Divider />
+                    
+                    <LyricsEditList>
+                      <Row repeat="10" clickable="true" hoverable="true">
+                        <TimeColumn width="20%">
+                          <TimeInput value="00:15.00" />
+                          <TimeButtons>
+                            <IconButton icon="clock-plus" size="small" />
+                            <IconButton icon="play-circle" size="small" />
+                          </TimeButtons>
+                        </TimeColumn>
+                        <TextColumn width="80%">
+                          <TextField value="Line of lyrics text" />
+                        </TextColumn>
+                      </Row>
+                      <AddLineButton icon="plus" label="Add Line" />
+                    </LyricsEditList>
+                  </Card>
+                </Column>
+                
+                <Column width="40%">
+                  <Card>
+                    <Tabs>
+                      <Tab label="Preview" icon="eye" selected="true">
+                        <KaraokePreview>
+                          <SynchronizedLyrics mode="karaoke" height="300px">
+                            <LyricLine time="0.0" active="false">First line of lyrics</LyricLine>
+                            <LyricLine time="5.0" active="true">
+                              <Word highlighted="true">Currently</Word>
+                              <Word highlighted="true">active</Word>
+                              <Word highlighted="false">line</Word>
+                            </LyricLine>
+                            <LyricLine time="10.0" active="false">Next line of lyrics</LyricLine>
+                          </SynchronizedLyrics>
+                        </KaraokePreview>
+                      </Tab>
+                      <Tab label="LRC Format" icon="code-braces">
+                        <CodePreview>
+                          [00:00.00] Song Title - Artist Name
+                          [00:05.00] First line of lyrics
+                          [00:10.00] Second line of lyrics
+                          [00:15.00] Third line of lyrics
+                        </CodePreview>
+                      </Tab>
+                      <Tab label="Help" icon="help-circle">
+                        <HelpText>
+                          <StepList>
+                            <Step number="1">Play the audio and listen to the lyrics</Step>
+                            <Step number="2">Click "Add Marker" when each line begins</Step>
+                            <Step number="3">Edit timestamps manually for fine-tuning</Step>
+                            <Step number="4">Preview your synchronized lyrics</Step>
+                            <Step number="5">Save when complete</Step>
+                          </StepList>
+                        </HelpText>
+                      </Tab>
+                    </Tabs>
+                  </Card>
+                  
+                  <ActionButtons align="end" spacing="2" margin="top">
+                    <Button label="Reset" action="resetTimestamps" />
+                    <Button label="Cancel" outlined="true" action="goBack" />
+                    <Button label="Save Synchronized Lyrics" primary="true" action="saveLRC" />
+                  </ActionButtons>
+                </Column>
+              </Row>
+            </Card>
+          </Content>
+        </Wireframe>
+      </Screen>
+    </Screens>
+    
+    <!-- COMPONENTS -->
+    <Components>
+      <!-- Song Card Component -->
+      <Component id="song_card">
+        <Name>Song Card</Name>
+        <Description>
+          Card component for displaying a song with thumbnail, title, artist, and action buttons.
+        </Description>
+        <Properties>
+          <Property name="song" type="object" required="true" description="Song data object" />
+          <Property name="showArtist" type="boolean" default="true" description="Whether to show artist name" />
+          <Property name="showControls" type="boolean" default="true" description="Whether to show control buttons" />
+          <Property name="compact" type="boolean" default="false" description="Whether to use compact layout" />
+          <Property name="clickable" type="boolean" default="true" description="Whether the card is clickable" />
+        </Properties>
+        <Design>
+          <Card rounded="lg" elevation="1" height="100%" clickable="clickable">
+            <CardImage src="song.thumbnailUrl" fallback="/assets/default-thumbnail.jpg" height="160px" cover="true">
+              <LoadingPlaceholder>
+                <CircularProgress />
+              </LoadingPlaceholder>
+            </CardImage>
+            <CardTitle truncate="true" fontSize="subtitle-1">{{ song.title }}</CardTitle>
+            <CardSubtitle truncate="true" fontSize="caption" condition="showArtist">{{ song.artist }}</CardSubtitle>
+            <CardActions condition="showControls">
+              <Slot name="actions">
+                <IconButton icon="play" tooltip="Play" onClick="playSong(song)" />
+                <Spacer />
+                <MenuButton>
+                  <MenuItem icon="pencil" text="Edit" action="navigateToEdit(song.id)" />
+                  <MenuItem icon="playlist-plus" text="Add to Playlist" action="addToPlaylist(song.id)" />
+                  <MenuItem icon="delete" text="Delete" action="confirmDelete(song.id)" color="error" />
+                </MenuButton>
+              </Slot>
+            </CardActions>
+          </Card>
+        </Design>
+      </Component>
+      
+      <!-- Wave Player Component -->
+      <Component id="wave_player">
+        <Name>Waveform Player</Name>
+        <Description>
+          Audio player with waveform visualization, controls, and markers support.
+        </Description>
+        <Properties>
+          <Property name="audioUrl" type="string" required="true" description="URL of the audio file" />
+          <Property name="peaks" type="array" description="Pre-calculated peak data for waveform" />
+          <Property name="waveformData" type="string" description="Serialized waveform data" />
+          <Property name="options" type="object" description="Configuration options for the waveform" />
+          <Property name="showControls" type="boolean" default="true" description="Whether to show playback controls" />
+          <Property name="showTimeline" type="boolean" default="true" description="Whether to show the timeline" />
+          <Property name="regions" type="array" description="Audio regions to display on the waveform" />
+          <Property name="markers" type="array" description="Time markers to display on the waveform" />
+        </Properties>
+        <Events>
+          <Event name="play" description="Emitted when playback starts" />
+          <Event name="pause" description="Emitted when playback pauses" />
+          <Event name="seek" description="Emitted when seeking to a position" parameters="time: number" />
+          <Event name="ready" description="Emitted when the waveform is loaded and ready" />
+          <Event name="timeupdate" description="Emitted when the current time updates" parameters="time: number" />
+          <Event name="region-click" description="Emitted when a region is clicked" parameters="regionId: string" />
+          <Event name="marker-click" description="Emitted when a marker is clicked" parameters="markerId: string" />
+        </Events>
+        <Design>
+          <Container width="100%">
+            <WaveformContainer ref="waveContainer" background="rgba(0, 0, 0, 0.05)" padding="8px" borderRadius="8px" />
+            
+            <ControlsContainer condition="showControls" height="40px" margin="8px 0 0 0" display="flex" alignItems="center">
+              <PlayPauseButton
+                icon="isPlaying ? 'mdi-pause' : 'mdi-play'"
+                color="isPlaying ? 'primary' : undefined"
+                onClick="togglePlay"
+              />
+              
+              <TimeDisplay margin="0 8px" fontSize="caption" fontVariant="tabular-nums">
+                {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
+              </TimeDisplay>
+              
+              <SeekSlider
+                model="sliderPosition"
+                class="flex-grow-1"
+                hideDetails="true"
+                density="compact"
+                color="primary"
+                onInput="onSliderChange"
+                onMousedown="onSliderMouseDown"
+                onMouseup="onSliderMouseUp"
+              />
+              
+              <VolumeButton
+                icon="isMuted ? 'mdi-volume-off' : volume > 0.5 ? 'mdi-volume-high' : 'mdi-volume-medium'"
+                onClick="toggleMute"
+              />
+              
+              <VolumeSlider
+                model="volume"
+                max="1"
+                step="0.01"
+                hideDetails="true"
+                density="compact"
+                color="primary"
+                width="100px"
+                onInput="onVolumeChange"
+              />
+            </ControlsContainer>
+          </Container>
+        </Design>
+      </Component>
+      
+      <!-- Lyrics Display Component -->
+      <Component id="lyrics_display">
+        <Name>Lyrics Display</Name>
+        <Description>
+          Component for displaying synchronized lyrics with karaoke and scroll modes.
+        </Description>
+        <Properties>
+          <Property name="lines" type="array" required="true" description="Array of lyric line objects" />
+          <Property name="currentTime" type="number" required="true" description="Current playback time in seconds" />
+          <Property name="options" type="object" description="Display options for the lyrics" />
+          <Property name="translation" type="array" description="Array of translated lyric lines" />
+        </Properties>
+        <Events>
+          <Event name="line-click" description="Emitted when a line is clicked" parameters="line: object" />
+          <Event name="word-click" description="Emitted when a word is clicked" parameters="word: string, time: number" />
+        </Events>
+        <Design>
+          <Container width="100%" height="100%" overflow="hidden">
+            <LyricsScrollContainer
+              ref="lyricsContainer"
+              height="100%"
+              overflow="auto"
+              padding="16px"
+              lineHeight="1.5"
+              class="lyrics-container"
+              className="options.displayMode === 'karaoke' ? 'karaoke-mode' : ''"
+            >
+              <NoLyricsMessage condition="lines.length === 0" textAlign="center" padding="32px 0">
+                <Icon name="mdi-text" size="x-large" marginBottom="8px" />
+                <Text>No synchronized lyrics available</Text>
+              </NoLyricsMessage>
+              
+              <LyricLines condition="lines.length > 0">
+                <LyricLine
+                  repeat="lines.length"
+                  marginBottom="16px"
+                  padding="4px 8px"
+                  borderRadius="4px"
+                  cursor="pointer"
+                  class="lyric-line"
+                  className="{
+                    'active': currentLineIndex === index,
+                    'past': index < currentLineIndex
+                  }"
+                  id="line-${index}"
+                  onClick="onLineClick(line)"
+                >
+                  <LineText condition="displayMode === 'scroll' || index !== currentLineIndex">
+                    {{ line.text }}
+                  </LineText>
+                  
+                  <KaraokeLine condition="displayMode === 'karaoke' && index === currentLineIndex" display="inline">
+                    <KaraokeWord
+                      repeat="lineSplitWords.length"
+                      display="inline-block"
+                      marginRight="4px"
+                      class="karaoke-word"
+                      className="isWordHighlighted(wordIndex) ? 'highlighted' : ''"
+                      onClick="onWordClick(word.text, word.time)"
+                    >
+                      {{ word.text }}
+                    </KaraokeWord>
+                  </KaraokeLine>
+                  
+                  <TranslationLine
+                    condition="showTranslation && getTranslationForLine(index)"
+                    marginTop="4px"
+                    fontSize="0.9em"
+                    fontStyle="italic"
+                    opacity="0.7"
+                    class="translation-line"
+                  >
+                    {{ getTranslationForLine(index) }}
+                  </TranslationLine>
+                </LyricLine>
+              </LyricLines>
+            </LyricsScrollContainer>
+          </Container>
+        </Design>
+      </Component>
+    </Components>
+  </Application>
+</UIDesign>

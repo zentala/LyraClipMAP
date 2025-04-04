@@ -1,0 +1,837 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<UXDesign xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Application name="LyraClipMAP">
+    <Description>
+      Music library application with synchronized lyrics, YouTube integration, and search functionality.
+      Built with Vue 3, Vuetify, and a clean, music-themed interface.
+    </Description>
+    
+    <Theme>
+      <PrimaryColor>#6200EA</PrimaryColor> <!-- Deep purple -->
+      <SecondaryColor>#03DAC6</SecondaryColor> <!-- Teal accent -->
+      <BackgroundColor>#121212</BackgroundColor> <!-- Dark background -->
+      <SurfaceColor>#1E1E1E</SurfaceColor> <!-- Slightly lighter than background -->
+      <ErrorColor>#CF6679</ErrorColor>
+      <OnPrimaryColor>#FFFFFF</OnPrimaryColor>
+      <OnSecondaryColor>#000000</OnSecondaryColor>
+      <OnBackgroundColor>#FFFFFF</OnBackgroundColor>
+      <OnSurfaceColor>#FFFFFF</OnSurfaceColor>
+      
+      <Typography>
+        <FontFamily>Roboto</FontFamily>
+        <Headings>
+          <h1 size="2.5rem" weight="700" letterSpacing="-0.03125em">LyraClipMAP</h1>
+          <h2 size="2rem" weight="700" letterSpacing="-0.03125em">Song Title</h2>
+          <h3 size="1.5rem" weight="500" letterSpacing="0">Artist Name</h3>
+          <h4 size="1.25rem" weight="500" letterSpacing="0.0125em">Section Heading</h4>
+        </Headings>
+        <Body size="1rem" weight="400" letterSpacing="0.03125em">Regular text and lyrics</Body>
+        <Caption size="0.875rem" weight="400" letterSpacing="0.025em">Timestamps and metadata</Caption>
+      </Typography>
+      
+      <Spacing>
+        <Base>8px</Base> <!-- Base spacing unit -->
+        <Scale>2, 3, 4, 5, 6, 8, 10, 12</Scale> <!-- Multiples of base unit -->
+      </Spacing>
+      
+      <Effects>
+        <Elevation>
+          <Level1>0px 1px 3px 0px rgba(0, 0, 0, 0.2), 0px 1px 1px 0px rgba(0, 0, 0, 0.14), 0px 2px 1px -1px rgba(0, 0, 0, 0.12)</Level1>
+          <Level2>0px 2px 4px -1px rgba(0, 0, 0, 0.2), 0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12)</Level2>
+          <Level3>0px 5px 5px -3px rgba(0, 0, 0, 0.2), 0px 8px 10px 1px rgba(0, 0, 0, 0.14), 0px 3px 14px 2px rgba(0, 0, 0, 0.12)</Level3>
+        </Elevation>
+        <Transitions>
+          <Standard>0.3s cubic-bezier(0.4, 0, 0.2, 1)</Standard>
+          <Emphasis>0.4s cubic-bezier(0.0, 0, 0.2, 1)</Emphasis>
+        </Transitions>
+        <Animations>
+          <Sound>
+            <Description>Subtle wave animation for active audio playback</Description>
+            <Properties>Transform scale with subtle wave effect</Properties>
+          </Sound>
+          <Highlight>
+            <Description>Pulsing highlight for synchronized lyrics</Description>
+            <Properties>Background-color transition with subtle pulse</Properties>
+          </Highlight>
+        </Animations>
+      </Effects>
+    </Theme>
+    
+    <Layout>
+      <AppBar component="v-app-bar" position="fixed" elevation="2" color="primary" prominent>
+        <Logo src="/assets/logo.svg" width="36px" height="36px" />
+        <Title component="v-app-bar-title">LyraClipMAP</Title>
+        <SearchField component="v-autocomplete" 
+                     placeholder="Search songs, artists, or lyrics..."
+                     prepend-inner-icon="mdi-magnify"
+                     clearable
+                     hide-details
+                     variant="solo-filled"
+                     rounded
+                     bg-color="surface-variant"
+                     return-object
+                     no-filter
+                     auto-select-first
+                     :menu-props="{ maxHeight: '400px', offsetY: true }"
+                     @update:search="debounced-search"
+                     @update:model-value="handle-selection" />
+        <Spacer component="v-spacer" />
+        <ThemeToggle component="v-btn" icon="mdi-theme-light-dark" variant="text" />
+        <AccountMenu component="v-menu" v-if="isLoggedIn">
+          <Template v-slot:activator="{ props }">
+            <v-avatar v-bind="props">
+              <v-img :src="user.avatar" alt="User Avatar" />
+            </v-avatar>
+          </Template>
+          <v-list>
+            <v-list-item prepend-icon="mdi-account" title="Profile" @click="navigate-to-profile" />
+            <v-list-item prepend-icon="mdi-playlist-music" title="My Playlists" @click="navigate-to-playlists" />
+            <v-list-item prepend-icon="mdi-cog" title="Settings" @click="navigate-to-settings" />
+            <v-divider />
+            <v-list-item prepend-icon="mdi-logout" title="Logout" @click="logout" />
+          </v-list>
+        </AccountMenu>
+        <LoginButton component="v-btn" v-else text="Login" prepend-icon="mdi-login" variant="text" />
+      </AppBar>
+      
+      <MainNavigation component="v-navigation-drawer" rail app permanent>
+        <v-list>
+          <v-list-item prepend-icon="mdi-home" title="Home" value="home" @click="navigate-to-home" />
+          <v-list-item prepend-icon="mdi-music-note" title="Songs" value="songs" @click="navigate-to-songs" />
+          <v-list-item prepend-icon="mdi-playlist-music" title="Playlists" value="playlists" @click="navigate-to-playlists" />
+          <v-list-item prepend-icon="mdi-account-music" title="Artists" value="artists" @click="navigate-to-artists" />
+          <v-list-item prepend-icon="mdi-history" title="Recent" value="recent" @click="navigate-to-recent" />
+        </v-list>
+        <template v-slot:append>
+          <v-list>
+            <v-list-item prepend-icon="mdi-music-note-plus" title="Add Song" value="add" @click="navigate-to-add" />
+          </v-list>
+        </template>
+      </MainNavigation>
+      
+      <MainContent component="v-main">
+        <v-container fluid>
+          <router-view />
+        </v-container>
+      </MainContent>
+      
+      <Footer component="v-footer" app padless>
+        <v-divider />
+        <v-container>
+          <v-row no-gutters>
+            <v-col cols="12" sm="6">
+              <div class="text-caption">© 2023 LyraClipMAP</div>
+            </v-col>
+            <v-col cols="12" sm="6" class="text-right">
+              <v-btn icon="mdi-github" variant="text" href="https://github.com/yourusername/LyraClipMAP" target="_blank" />
+              <v-btn icon="mdi-help-circle" variant="text" @click="show-help-dialog" />
+            </v-col>
+          </v-row>
+        </v-container>
+      </Footer>
+    </Layout>
+    
+    <Pages>
+      <Page name="Home" route="/">
+        <Hero component="v-card" class="mb-6" elevation="3" rounded="lg">
+          <v-img src="/assets/music-banner.jpg" height="200" cover>
+            <template v-slot:placeholder>
+              <v-row class="fill-height" align="center" justify="center">
+                <v-progress-circular indeterminate color="primary" />
+              </v-row>
+            </template>
+            <div class="d-flex flex-column fill-height justify-end align-start pa-6 bg-black bg-opacity-50">
+              <h1 class="text-h4 text-white font-weight-bold">Welcome to LyraClipMAP</h1>
+              <p class="text-subtitle-1 text-white">Your personal music library with synchronized lyrics</p>
+            </div>
+          </v-img>
+          <v-card-actions>
+            <v-btn color="primary" variant="elevated" prepend-icon="mdi-music-note-plus" @click="navigate-to-add">Add Song</v-btn>
+            <v-btn color="secondary" variant="text" prepend-icon="mdi-magnify" @click="focus-search">Search Library</v-btn>
+          </v-card-actions>
+        </Hero>
+        
+        <RecentlyAdded component="v-sheet" class="mb-6" rounded="lg" elevation="1">
+          <v-card-title class="d-flex align-center">
+            <v-icon start icon="mdi-clock-outline" />
+            Recently Added
+            <v-spacer />
+            <v-btn variant="text" size="small" @click="navigate-to-recent">View All</v-btn>
+          </v-card-title>
+          <v-divider />
+          <v-row>
+            <v-col v-for="(song, index) in recentSongs" :key="song.id" cols="12" sm="6" md="4" lg="3">
+              <SongCard :song="song" @click="navigate-to-song(song.id)" />
+            </v-col>
+          </v-row>
+        </RecentlyAdded>
+        
+        <FeaturedPlaylists component="v-sheet" class="mb-6" rounded="lg" elevation="1" v-if="isLoggedIn">
+          <v-card-title class="d-flex align-center">
+            <v-icon start icon="mdi-playlist-star" />
+            Your Playlists
+            <v-spacer />
+            <v-btn variant="text" size="small" @click="navigate-to-playlists">View All</v-btn>
+          </v-card-title>
+          <v-divider />
+          <v-row>
+            <v-col v-for="(playlist, index) in userPlaylists" :key="playlist.id" cols="12" sm="6" md="4" lg="3">
+              <PlaylistCard :playlist="playlist" @click="navigate-to-playlist(playlist.id)" />
+            </v-col>
+          </v-row>
+        </FeaturedPlaylists>
+        
+        <PopularSongs component="v-sheet" rounded="lg" elevation="1">
+          <v-card-title class="d-flex align-center">
+            <v-icon start icon="mdi-trending-up" />
+            Popular Songs
+            <v-spacer />
+            <v-btn variant="text" size="small" @click="navigate-to-popular">View All</v-btn>
+          </v-card-title>
+          <v-divider />
+          <v-row>
+            <v-col v-for="(song, index) in popularSongs" :key="song.id" cols="12" sm="6" md="4" lg="3">
+              <SongCard :song="song" @click="navigate-to-song(song.id)" />
+            </v-col>
+          </v-row>
+        </PopularSongs>
+      </Page>
+      
+      <Page name="SongList" route="/songs">
+        <PageHeader component="div" class="d-flex align-center mb-6">
+          <h1 class="text-h4">My Songs</h1>
+          <v-spacer />
+          <v-btn-group variant="outlined" rounded>
+            <v-btn prepend-icon="mdi-view-grid" :active="viewMode === 'grid'" @click="viewMode = 'grid'">Grid</v-btn>
+            <v-btn prepend-icon="mdi-view-list" :active="viewMode === 'list'" @click="viewMode = 'list'">List</v-btn>
+          </v-btn-group>
+          <v-btn color="primary" class="ml-4" prepend-icon="mdi-music-note-plus" @click="navigate-to-add">Add Song</v-btn>
+        </PageHeader>
+        
+        <v-card>
+          <v-card-text>
+            <FilterPanel>
+              <v-row>
+                <v-col cols="12" sm="4">
+                  <v-text-field v-model="filters.search" label="Filter by title or artist" 
+                                prepend-inner-icon="mdi-magnify" density="compact" hide-details variant="outlined" clearable />
+                </v-col>
+                <v-col cols="12" sm="3">
+                  <v-select v-model="filters.sortBy" label="Sort by" 
+                            :items="sortOptions" density="compact" hide-details variant="outlined" />
+                </v-col>
+                <v-col cols="12" sm="3">
+                  <v-select v-model="filters.artistFilter" label="Filter by artist" 
+                            :items="artistOptions" density="compact" hide-details variant="outlined" clearable />
+                </v-col>
+                <v-col cols="12" sm="2">
+                  <v-btn-group variant="outlined" width="100%">
+                    <v-btn :icon="sortDirection === 'asc' ? 'mdi-sort-ascending' : 'mdi-sort-descending'" 
+                           @click="toggleSortDirection" width="100%">
+                      {{ sortDirection === 'asc' ? 'Ascending' : 'Descending' }}
+                    </v-btn>
+                  </v-btn-group>
+                </v-col>
+              </v-row>
+            </FilterPanel>
+            
+            <v-divider class="my-4" />
+            
+            <template v-if="viewMode === 'grid'">
+              <v-row>
+                <v-col v-for="song in filteredSongs" :key="song.id" cols="12" sm="6" md="4" lg="3">
+                  <SongCard :song="song" @click="navigate-to-song(song.id)">
+                    <template v-slot:actions>
+                      <v-btn icon="mdi-play" variant="text" @click.stop="playSong(song)" />
+                      <v-menu>
+                        <template v-slot:activator="{ props }">
+                          <v-btn icon="mdi-dots-vertical" variant="text" v-bind="props" />
+                        </template>
+                        <v-list>
+                          <v-list-item prepend-icon="mdi-pencil" title="Edit" @click="navigate-to-edit-song(song.id)" />
+                          <v-list-item prepend-icon="mdi-playlist-plus" title="Add to Playlist" @click="add-to-playlist(song.id)" />
+                          <v-list-item prepend-icon="mdi-delete" title="Delete" @click="confirm-delete-song(song.id)" />
+                        </v-list>
+                      </v-menu>
+                    </template>
+                  </SongCard>
+                </v-col>
+              </v-row>
+            </template>
+            
+            <template v-else>
+              <v-table>
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Artist</th>
+                    <th>Date Added</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="song in filteredSongs" :key="song.id" @click="navigate-to-song(song.id)" style="cursor: pointer">
+                    <td>
+                      <div class="d-flex align-center">
+                        <v-avatar class="mr-3" size="40" rounded>
+                          <v-img :src="song.thumbnail || '/assets/default-thumbnail.jpg'" />
+                        </v-avatar>
+                        {{ song.title }}
+                      </div>
+                    </td>
+                    <td>{{ song.artist }}</td>
+                    <td>{{ formatDate(song.createdAt) }}</td>
+                    <td>
+                      <v-btn icon="mdi-play" size="small" variant="text" @click.stop="playSong(song)" />
+                      <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="navigate-to-edit-song(song.id)" />
+                      <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click.stop="confirm-delete-song(song.id)" />
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </template>
+            
+            <v-pagination v-if="totalPages > 1" v-model="currentPage" :length="totalPages" total-visible="7" class="mt-4" />
+            
+            <v-dialog v-model="deleteDialog" max-width="500">
+              <v-card>
+                <v-card-title>Delete Song</v-card-title>
+                <v-card-text>Are you sure you want to delete this song? This action cannot be undone.</v-card-text>
+                <v-card-actions>
+                  <v-spacer />
+                  <v-btn color="primary" variant="text" @click="deleteDialog = false">Cancel</v-btn>
+                  <v-btn color="error" variant="elevated" @click="deleteSong">Delete</v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
+          </v-card-text>
+        </v-card>
+      </Page>
+      
+      <Page name="SongDetail" route="/songs/:id">
+        <v-card class="mb-4">
+          <v-row no-gutters>
+            <v-col cols="12" md="6">
+              <div class="pa-4">
+                <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" class="mb-2" />
+                <h1 class="text-h4 font-weight-bold">{{ song.title }}</h1>
+                <h2 class="text-h6 text-grey">{{ song.artist }}</h2>
+                
+                <v-chip-group class="mt-4">
+                  <v-chip color="primary" variant="elevated" size="small">{{ song.audioSources[0]?.sourceType || 'YouTube' }}</v-chip>
+                  <v-chip variant="outlined" size="small" v-if="song.textContents.length > 0">Has Lyrics</v-chip>
+                </v-chip-group>
+                
+                <v-divider class="my-4" />
+                
+                <v-row>
+                  <v-col cols="12" sm="6">
+                    <v-btn block color="primary" prepend-icon="mdi-pencil" @click="navigate-to-edit-song(song.id)">
+                      Edit Song
+                    </v-btn>
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-btn block color="primary" variant="outlined" prepend-icon="mdi-playlist-plus" @click="add-to-playlist(song.id)">
+                      Add to Playlist
+                    </v-btn>
+                  </v-col>
+                </v-row>
+              </div>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-img :src="song.thumbnail || '/assets/default-thumbnail.jpg'" max-height="300" cover class="rounded-tr-lg rounded-br-lg" />
+            </v-col>
+          </v-row>
+        </v-card>
+        
+        <v-tabs v-model="activeTab" class="mb-4" bg-color="background">
+          <v-tab value="player">
+            <v-icon start>mdi-youtube</v-icon>
+            Player
+          </v-tab>
+          <v-tab value="lyrics" :disabled="!hasLyrics">
+            <v-icon start>mdi-text</v-icon>
+            Lyrics
+          </v-tab>
+          <v-tab value="info">
+            <v-icon start>mdi-information</v-icon>
+            Info
+          </v-tab>
+        </v-tabs>
+        
+        <v-window v-model="activeTab">
+          <v-window-item value="player">
+            <v-card>
+              <v-responsive :aspect-ratio="16/9">
+                <div class="youtube-embed" v-html="youtubeEmbed"></div>
+              </v-responsive>
+            </v-card>
+          </v-window-item>
+          
+          <v-window-item value="lyrics">
+            <v-card>
+              <v-card-title class="d-flex align-center">
+                <span>Lyrics</span>
+                <v-spacer />
+                <v-btn-group variant="outlined">
+                  <v-btn prepend-icon="mdi-sync" :loading="fetchingLyrics" @click="refreshLyrics">Refresh</v-btn>
+                  <v-btn prepend-icon="mdi-pencil" @click="editLyrics">Edit</v-btn>
+                </v-btn-group>
+              </v-card-title>
+              <v-divider />
+              <v-card-text>
+                <div class="lyrics-display pa-4" style="white-space: pre-wrap; font-size: 1.1rem; line-height: 1.6">
+                  {{ lyrics }}
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-window-item>
+          
+          <v-window-item value="info">
+            <v-card>
+              <v-card-title>Song Information</v-card-title>
+              <v-divider />
+              <v-card-text>
+                <v-list>
+                  <v-list-item>
+                    <template v-slot:prepend>
+                      <v-icon icon="mdi-music" />
+                    </template>
+                    <v-list-item-title>Title</v-list-item-title>
+                    <v-list-item-subtitle>{{ song.title }}</v-list-item-subtitle>
+                  </v-list-item>
+                  
+                  <v-list-item>
+                    <template v-slot:prepend>
+                      <v-icon icon="mdi-account-music" />
+                    </template>
+                    <v-list-item-title>Artist</v-list-item-title>
+                    <v-list-item-subtitle>{{ song.artist }}</v-list-item-subtitle>
+                  </v-list-item>
+                  
+                  <v-list-item>
+                    <template v-slot:prepend>
+                      <v-icon icon="mdi-youtube" />
+                    </template>
+                    <v-list-item-title>Source</v-list-item-title>
+                    <v-list-item-subtitle>
+                      <a :href="youtubeUrl" target="_blank" rel="noopener noreferrer">{{ youtubeUrl }}</a>
+                    </v-list-item-subtitle>
+                  </v-list-item>
+                  
+                  <v-list-item>
+                    <template v-slot:prepend>
+                      <v-icon icon="mdi-calendar" />
+                    </template>
+                    <v-list-item-title>Added on</v-list-item-title>
+                    <v-list-item-subtitle>{{ formatDate(song.createdAt) }}</v-list-item-subtitle>
+                  </v-list-item>
+                  
+                  <v-list-item v-if="song.description">
+                    <template v-slot:prepend>
+                      <v-icon icon="mdi-text" />
+                    </template>
+                    <v-list-item-title>Description</v-list-item-title>
+                    <v-list-item-subtitle>{{ song.description }}</v-list-item-subtitle>
+                  </v-list-item>
+                </v-list>
+              </v-card-text>
+            </v-card>
+          </v-window-item>
+        </v-window>
+      </Page>
+      
+      <Page name="AddSong" route="/songs/add">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
+            <span>Add New Song</span>
+          </v-card-title>
+          <v-divider />
+          
+          <v-card-text>
+            <v-form @submit.prevent="submitSong">
+              <v-container>
+                <v-row>
+                  <v-col cols="12">
+                    <v-text-field v-model="form.youtubeUrl" label="YouTube URL" 
+                                 placeholder="https://www.youtube.com/watch?v=..."
+                                 hint="Enter a YouTube URL to automatically extract song information"
+                                 persistent-hint
+                                 prepend-inner-icon="mdi-youtube"
+                                 :rules="[v => !!v || 'YouTube URL is required', v => isValidYoutubeUrl(v) || 'Invalid YouTube URL']"
+                                 required />
+                  </v-col>
+                  
+                  <v-col cols="12" class="d-flex justify-center">
+                    <v-btn color="primary" prepend-icon="mdi-magnify" :loading="fetchingPreview" @click="fetchPreview">
+                      Preview & Extract Info
+                    </v-btn>
+                  </v-col>
+                  
+                  <v-col cols="12" v-if="previewData">
+                    <v-card variant="outlined" class="mb-4">
+                      <v-row no-gutters>
+                        <v-col cols="12" sm="4">
+                          <v-img :src="previewData.thumbnail" cover height="100%" min-height="150" />
+                        </v-col>
+                        <v-col cols="12" sm="8">
+                          <v-card-text>
+                            <h3 class="text-subtitle-1 font-weight-bold">{{ previewData.title }}</h3>
+                            <p class="text-caption text-grey">{{ previewData.channelName }}</p>
+                            <v-divider class="my-2" />
+                            <p class="text-body-2">
+                              <strong>Detected artist:</strong> {{ previewData.artist || 'Unknown' }}
+                            </p>
+                            <p class="text-body-2">
+                              <strong>Detected title:</strong> {{ previewData.songTitle || 'Unknown' }}
+                            </p>
+                          </v-card-text>
+                        </v-col>
+                      </v-row>
+                    </v-card>
+                  </v-col>
+                  
+                  <v-col cols="12" sm="6">
+                    <v-text-field v-model="form.title" label="Song Title" 
+                                 :placeholder="previewData?.songTitle || 'Enter song title'"
+                                 prepend-inner-icon="mdi-music-note"
+                                 :rules="[v => !!v || 'Title is required']"
+                                 required />
+                  </v-col>
+                  
+                  <v-col cols="12" sm="6">
+                    <v-text-field v-model="form.artist" label="Artist Name" 
+                                 :placeholder="previewData?.artist || 'Enter artist name'"
+                                 prepend-inner-icon="mdi-account-music"
+                                 :rules="[v => !!v || 'Artist is required']"
+                                 required />
+                  </v-col>
+                  
+                  <v-col cols="12">
+                    <v-expansion-panels variant="accordion">
+                      <v-expansion-panel title="Lyrics (Optional)">
+                        <template v-slot:text>
+                          <div class="d-flex mb-4">
+                            <v-btn prepend-icon="mdi-magnify" color="primary" variant="outlined" 
+                                 :loading="searchingLyrics" @click="searchLyrics" class="mr-2">
+                              Search for Lyrics
+                            </v-btn>
+                            <v-select v-model="lyricsSearchSource" :items="lyricsSearchSources" 
+                                    label="Source" density="compact" style="max-width: 200px" />
+                          </div>
+                          
+                          <v-textarea v-model="form.lyrics" label="Lyrics"
+                                    placeholder="Enter lyrics manually or search automatically"
+                                    auto-grow rows="10" row-height="20" 
+                                    hint="Leave empty to try to find lyrics automatically when saving" 
+                                    persistent-hint />
+                        </template>
+                      </v-expansion-panel>
+                    </v-expansion-panels>
+                  </v-col>
+                  
+                  <v-col cols="12" class="d-flex justify-end gap-2">
+                    <v-btn variant="text" @click="resetForm">Reset</v-btn>
+                    <v-btn variant="outlined" @click="goBack">Cancel</v-btn>
+                    <v-btn color="primary" type="submit" :loading="saving">Save Song</v-btn>
+                  </v-col>
+                </v-row>
+              </v-container>
+            </v-form>
+          </v-card-text>
+        </v-card>
+      </Page>
+      
+      <Page name="EditSong" route="/songs/:id/edit">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
+            <span>Edit Song</span>
+          </v-card-title>
+          <v-divider />
+          
+          <v-card-text>
+            <v-form @submit.prevent="updateSong">
+              <v-container>
+                <v-row>
+                  <v-col cols="12" sm="6">
+                    <v-text-field v-model="form.title" label="Song Title" 
+                                 prepend-inner-icon="mdi-music-note"
+                                 :rules="[v => !!v || 'Title is required']"
+                                 required />
+                  </v-col>
+                  
+                  <v-col cols="12" sm="6">
+                    <v-text-field v-model="form.artist" label="Artist Name" 
+                                 prepend-inner-icon="mdi-account-music"
+                                 :rules="[v => !!v || 'Artist is required']"
+                                 required />
+                  </v-col>
+                  
+                  <v-col cols="12">
+                    <v-text-field v-model="form.youtubeUrl" label="YouTube URL" 
+                                 prepend-inner-icon="mdi-youtube"
+                                 :rules="[v => !!v || 'YouTube URL is required', v => isValidYoutubeUrl(v) || 'Invalid YouTube URL']"
+                                 required />
+                  </v-col>
+                  
+                  <v-col cols="12">
+                    <v-textarea v-model="form.lyrics" label="Lyrics"
+                              auto-grow rows="10" row-height="20" />
+                  </v-col>
+                  
+                  <v-col cols="12" class="d-flex justify-space-between">
+                    <v-btn color="error" prepend-icon="mdi-delete" variant="outlined" @click="confirmDeleteSong">
+                      Delete Song
+                    </v-btn>
+                    
+                    <div>
+                      <v-btn variant="outlined" class="mr-2" @click="goBack">Cancel</v-btn>
+                      <v-btn color="primary" type="submit" :loading="saving">Save Changes</v-btn>
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-container>
+            </v-form>
+          </v-card-text>
+        </v-card>
+      </Page>
+      
+      <Page name="Search" route="/search">
+        <v-card>
+          <v-card-title>
+            <v-icon start>mdi-magnify</v-icon>
+            Search Results for "{{ searchQuery }}"
+          </v-card-title>
+          <v-divider />
+          
+          <v-card-text>
+            <v-tabs v-model="searchTab">
+              <v-tab value="songs">
+                <v-icon start>mdi-music-note</v-icon>
+                Songs ({{ songResults.length }})
+              </v-tab>
+              <v-tab value="lyrics">
+                <v-icon start>mdi-text</v-icon>
+                Lyrics ({{ lyricsResults.length }})
+              </v-tab>
+              <v-tab value="artists">
+                <v-icon start>mdi-account-music</v-icon>
+                Artists ({{ artistResults.length }})
+              </v-tab>
+            </v-tabs>
+            
+            <v-window v-model="searchTab">
+              <v-window-item value="songs">
+                <v-list v-if="songResults.length > 0">
+                  <v-list-item v-for="song in songResults" :key="song.id" :title="song.title" :subtitle="song.artist" @click="navigate-to-song(song.id)">
+                    <template v-slot:prepend>
+                      <v-avatar>
+                        <v-img :src="song.thumbnail || '/assets/default-thumbnail.jpg'" />
+                      </v-avatar>
+                    </template>
+                    <template v-slot:append>
+                      <v-btn icon="mdi-play" variant="text" @click.stop="playSong(song)" />
+                    </template>
+                  </v-list-item>
+                </v-list>
+                <v-alert v-else type="info" text="No songs found matching your search" />
+              </v-window-item>
+              
+              <v-window-item value="lyrics">
+                <v-list v-if="lyricsResults.length > 0">
+                  <v-list-item v-for="result in lyricsResults" :key="result.id" :title="result.title" :subtitle="result.artist" @click="navigate-to-song(result.id)">
+                    <template v-slot:prepend>
+                      <v-avatar>
+                        <v-img :src="result.thumbnail || '/assets/default-thumbnail.jpg'" />
+                      </v-avatar>
+                    </template>
+                    <template v-slot:append>
+                      <v-btn icon="mdi-play" variant="text" @click.stop="playSong(result)" />
+                    </template>
+                    <div class="text-caption mt-2 text-grey">
+                      Lyrics match: "...{{ result.matchContext }}..."
+                    </div>
+                  </v-list-item>
+                </v-list>
+                <v-alert v-else type="info" text="No lyrics found matching your search" />
+              </v-window-item>
+              
+              <v-window-item value="artists">
+                <v-row v-if="artistResults.length > 0">
+                  <v-col v-for="artist in artistResults" :key="artist.name" cols="12" sm="6" md="4">
+                    <v-card @click="viewArtistSongs(artist.name)">
+                      <v-card-title>{{ artist.name }}</v-card-title>
+                      <v-card-text>
+                        <div class="text-caption">{{ artist.songCount }} songs</div>
+                      </v-card-text>
+                      <v-card-actions>
+                        <v-btn variant="text" prepend-icon="mdi-music-note-outline" @click.stop="viewArtistSongs(artist.name)">
+                          View Songs
+                        </v-btn>
+                      </v-card-actions>
+                    </v-card>
+                  </v-col>
+                </v-row>
+                <v-alert v-else type="info" text="No artists found matching your search" />
+              </v-window-item>
+            </v-window>
+          </v-card-text>
+        </v-card>
+      </Page>
+    </Pages>
+    
+    <Components>
+      <Component name="SongCard" type="v-card" class="song-card h-100">
+        <v-img :src="song.thumbnail || '/assets/default-thumbnail.jpg'" height="160" cover>
+          <template v-slot:placeholder>
+            <v-row class="fill-height" align="center" justify="center">
+              <v-progress-circular indeterminate color="primary" />
+            </v-row>
+          </template>
+        </v-img>
+        <v-card-title class="text-subtitle-1 text-truncate">{{ song.title }}</v-card-title>
+        <v-card-subtitle class="text-caption text-truncate">{{ song.artist }}</v-card-subtitle>
+        <v-card-actions>
+          <slot name="actions">
+            <v-btn icon="mdi-play" variant="text" @click.stop="playSong(song)" />
+            <v-spacer />
+            <v-menu>
+              <template v-slot:activator="{ props }">
+                <v-btn icon="mdi-dots-vertical" variant="text" v-bind="props" />
+              </template>
+              <v-list>
+                <v-list-item prepend-icon="mdi-pencil" title="Edit" @click.stop="navigate-to-edit-song(song.id)" />
+                <v-list-item prepend-icon="mdi-playlist-plus" title="Add to Playlist" @click.stop="add-to-playlist(song.id)" />
+                <v-list-item prepend-icon="mdi-delete" title="Delete" @click.stop="confirm-delete-song(song.id)" color="error" />
+              </v-list>
+            </v-menu>
+          </slot>
+        </v-card-actions>
+      </Component>
+      
+      <Component name="PlaylistCard" type="v-card" class="playlist-card h-100">
+        <div class="playlist-card-image d-flex align-center justify-center bg-grey-darken-2" style="height: 160px;">
+          <v-icon size="64">mdi-playlist-music</v-icon>
+        </div>
+        <v-card-title class="text-subtitle-1 text-truncate">{{ playlist.name }}</v-card-title>
+        <v-card-subtitle class="text-caption">{{ playlist.songCount }} songs</v-card-subtitle>
+        <v-card-actions>
+          <v-btn icon="mdi-play" variant="text" @click.stop="playPlaylist(playlist)" />
+          <v-spacer />
+          <v-menu>
+            <template v-slot:activator="{ props }">
+              <v-btn icon="mdi-dots-vertical" variant="text" v-bind="props" />
+            </template>
+            <v-list>
+              <v-list-item prepend-icon="mdi-pencil" title="Edit" @click.stop="navigate-to-edit-playlist(playlist.id)" />
+              <v-list-item prepend-icon="mdi-delete" title="Delete" @click.stop="confirm-delete-playlist(playlist.id)" color="error" />
+            </v-list>
+          </v-menu>
+        </v-card-actions>
+      </Component>
+      
+      <Component name="AutocompleteSearchResults">
+        <!-- Implementation of search results dropdown for the search field in AppBar -->
+        <template v-slot:item="{ item, index }">
+          <v-list-item :key="index" :value="item">
+            <template v-slot:prepend>
+              <v-icon :icon="getSearchResultIcon(item)" color="primary" />
+            </template>
+            <v-list-item-title>{{ item.title }}</v-list-item-title>
+            <v-list-item-subtitle>{{ item.subtitle }}</v-list-item-subtitle>
+          </v-list-item>
+        </template>
+        
+        <template v-slot:no-data>
+          <v-list-item>
+            <v-list-item-title>No results found</v-list-item-title>
+          </v-list-item>
+        </template>
+      </Component>
+    </Components>
+    
+    <Dialogs>
+      <Dialog name="AddToPlaylistDialog" component="v-dialog" v-model="addToPlaylistDialog" max-width="500px">
+        <v-card>
+          <v-card-title>Add to Playlist</v-card-title>
+          <v-card-text>
+            <v-select v-if="playlists.length > 0" v-model="selectedPlaylist" 
+                     :items="playlists" item-title="name" item-value="id" label="Select Playlist" />
+            <v-alert v-else type="info" text="You don't have any playlists yet" />
+            
+            <v-divider class="my-4" />
+            
+            <v-text-field v-model="newPlaylistName" label="Or create a new playlist" 
+                        prepend-inner-icon="mdi-playlist-plus" />
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="addToPlaylistDialog = false">Cancel</v-btn>
+            <v-btn color="primary" :disabled="!selectedPlaylist && !newPlaylistName" @click="addToPlaylist">Add</v-btn>
+          </v-card-actions>
+        </v-card>
+      </Dialog>
+      
+      <Dialog name="ConfirmDeleteDialog" component="v-dialog" v-model="deleteDialog" max-width="500px">
+        <v-card>
+          <v-card-title>Delete {{ deleteItemType }}</v-card-title>
+          <v-card-text>
+            Are you sure you want to delete this {{ deleteItemType.toLowerCase() }}? This action cannot be undone.
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+            <v-btn color="error" @click="confirmDelete">Delete</v-btn>
+          </v-card-actions>
+        </v-card>
+      </Dialog>
+      
+      <Dialog name="HelpDialog" component="v-dialog" v-model="helpDialog" max-width="600px">
+        <v-card>
+          <v-card-title>Help</v-card-title>
+          <v-divider />
+          <v-card-text>
+            <h3 class="text-h6 mb-2">Getting Started</h3>
+            <p>LyraClipMAP helps you manage your music collection with synchronized lyrics. Here's how to use it:</p>
+            
+            <v-list>
+              <v-list-item prepend-icon="mdi-music-note-plus">
+                <v-list-item-title>Adding Songs</v-list-item-title>
+                <v-list-item-subtitle>
+                  Add songs by providing a YouTube URL. The app will automatically extract information.
+                </v-list-item-subtitle>
+              </v-list-item>
+              
+              <v-list-item prepend-icon="mdi-text">
+                <v-list-item-title>Finding Lyrics</v-list-item-title>
+                <v-list-item-subtitle>
+                  Lyrics are fetched automatically from multiple sources, or you can add them manually.
+                </v-list-item-subtitle>
+              </v-list-item>
+              
+              <v-list-item prepend-icon="mdi-playlist-music">
+                <v-list-item-title>Creating Playlists</v-list-item-title>
+                <v-list-item-subtitle>
+                  Organize your music by creating playlists and adding songs to them.
+                </v-list-item-subtitle>
+              </v-list-item>
+              
+              <v-list-item prepend-icon="mdi-magnify">
+                <v-list-item-title>Searching</v-list-item-title>
+                <v-list-item-subtitle>
+                  Search for songs by title, artist, or lyrics content.
+                </v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn color="primary" @click="helpDialog = false">Got it</v-btn>
+          </v-card-actions>
+        </v-card>
+      </Dialog>
+    </Dialogs>
+  </Application>
+</UXDesign>

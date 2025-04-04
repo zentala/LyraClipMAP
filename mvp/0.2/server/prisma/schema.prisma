@@ -1,0 +1,180 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String?
+  avatarUrl     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  playlists     Playlist[]
+  likedSongs    SongLike[]
+  likedArtists  ArtistLike[]
+  preferences   UserPreference?
+}
+
+model UserPreference {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  darkMode          Boolean  @default(false)
+  preferredLanguage String?  @default("en")
+  showLyrics        Boolean  @default(true)
+  autoPlayVideos    Boolean  @default(true)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Artist {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  songs       Song[]
+  likedBy     ArtistLike[]
+}
+
+model ArtistLike {
+  id        String   @id @default(cuid())
+  userId    String
+  artistId  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, artistId])
+}
+
+model Song {
+  id             String        @id @default(cuid())
+  title          String
+  artistId       String
+  description    String?
+  duration       Int?          // Duration in seconds
+  thumbnailUrl   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  artist         Artist        @relation(fields: [artistId], references: [id])
+  audioSources   AudioSource[]
+  textContents   TextContent[]
+  likedBy        SongLike[]
+  wordTimestamps WordTimestamp[]
+  playlists      PlaylistSong[]
+  tags           SongTag[]
+}
+
+model SongLike {
+  id        String   @id @default(cuid())
+  userId    String
+  songId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, songId])
+}
+
+model AudioSource {
+  id          String   @id @default(cuid())
+  songId      String
+  url         String
+  sourceType  SourceType @default(YOUTUBE)
+  isMain      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  song        Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+}
+
+enum SourceType {
+  YOUTUBE
+  SPOTIFY
+  SOUNDCLOUD
+  MP3
+  OTHER
+}
+
+model TextContent {
+  id            String          @id @default(cuid())
+  songId        String
+  content       String          @db.Text
+  contentType   ContentType
+  language      String?
+  source        String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  song          Song            @relation(fields: [songId], references: [id], onDelete: Cascade)
+  wordTimestamps WordTimestamp[]
+}
+
+enum ContentType {
+  LYRICS
+  TRANSLATION
+  TRANSCRIPTION
+  DESCRIPTION
+  CHORDS
+  SHEET_MUSIC
+}
+
+model WordTimestamp {
+  id            String      @id @default(cuid())
+  songId        String
+  textContentId String
+  word          String
+  startTime     Float       // Start time in seconds
+  endTime       Float       // End time in seconds
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  song          Song        @relation(fields: [songId], references: [id], onDelete: Cascade)
+  textContent   TextContent @relation(fields: [textContentId], references: [id], onDelete: Cascade)
+}
+
+model Playlist {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  isPublic    Boolean        @default(false)
+  userId      String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  songs       PlaylistSong[]
+}
+
+model PlaylistSong {
+  id         String   @id @default(cuid())
+  playlistId String
+  songId     String
+  order      Int
+  addedAt    DateTime @default(now())
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  song       Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, songId])
+}
+
+model Tag {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  songs    SongTag[]
+}
+
+model SongTag {
+  songId   String
+  tagId    String
+  addedAt  DateTime @default(now())
+  song     Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([songId, tagId])
+}

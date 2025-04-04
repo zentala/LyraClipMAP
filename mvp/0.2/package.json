@@ -1,0 +1,26 @@
+{
+  "name": "lyraclipmap",
+  "version": "0.2.0",
+  "private": true,
+  "description": "LyraClipMAP - Music library with synchronized lyrics",
+  "author": "LyraClipMAP Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0",
+    "pnpm": ">=7.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter client dev & pnpm --filter server dev",
+    "build": "pnpm --filter client build && pnpm --filter server build",
+    "start": "node server/dist/main.js",
+    "test": "pnpm --filter client test && pnpm --filter server test",
+    "lint": "pnpm --filter client lint && pnpm --filter server lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.1.6"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ]
+}
