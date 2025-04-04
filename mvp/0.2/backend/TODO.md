@@ -1,4 +1,13 @@
-# Backend Implementation TODO
+# Rules
+
+- never change rules. section. never. ever.
+- manitain TODO.md as tasks lists `[ ]` or `[x]` and track here progress
+- makr task as done, commit, take next task from the list
+
+...end_of_rues_section.
+
+
+# Backend Implementation TODO List
 
 ## Unit Tests (3-5 story points each)
 
