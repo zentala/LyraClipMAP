@@ -3,6 +3,21 @@
 * never change rules. section. never. ever.
 * mark task as done, commit, take next task fromtak the list
 * in every point / task
+* manitain this `TODO.md` as: Groups > Tasks > TODO Actions
+```
+## Group
+
+1. **Task**
+   Commit name: `test(backend): task` 
+   [x] todo action
+   [x] next todo
+   [x] todo
+
+2. **Task***
+   Commit name: `feat: ci/ci conf`
+   [ ] todo
+```
+
 
 ...end_of_rues_section. you can edit from here:
 
@@ -38,9 +53,9 @@
    [x] Test artist metadata handling
 
 6. **Playlists Module Tests**
-   [ ] Test CRUD operations for playlists
-   [ ] Verify playlist-song relationships
-   [ ] Test public/private access controls
+   [x] Test CRUD operations for playlists
+   [x] Verify playlist-song relationships
+   [x] Test public/private access controls
 
 7. **Tags Module Tests**
    [ ] Test tag creation and assignment
@@ -139,3 +154,5 @@
    [x] Create reusable test factories
    [x] Implement test data generators
    [x] Build request simulation utilities
+
+[x] Implement tests for media flow
