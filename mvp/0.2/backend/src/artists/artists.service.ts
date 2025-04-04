@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateArtistDto } from './dto/create-artist.dto';
 import { UpdateArtistDto } from './dto/update-artist.dto';
@@ -7,7 +7,25 @@ import { UpdateArtistDto } from './dto/update-artist.dto';
 export class ArtistsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private validateImageUrl(url: string): void {
+    if (!url) return;
+    
+    try {
+      new URL(url);
+    } catch (error) {
+      throw new BadRequestException('Invalid image URL format');
+    }
+  }
+
   async create(createArtistDto: CreateArtistDto) {
+    if (!createArtistDto.name) {
+      throw new BadRequestException('Name is required');
+    }
+    
+    if (createArtistDto.imageUrl) {
+      this.validateImageUrl(createArtistDto.imageUrl);
+    }
+    
     return this.prisma.artist.create({
       data: createArtistDto,
     });

@@ -1,19 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { UpdateUserPreferencesDto } from './dto/update-user-preferences.dto';
+import { Prisma, User } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByEmail(email: string) {
+  async findByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { email },
     });
   }
 
-  async findById(id: number) {
+  async findById(id: number): Promise<User> {
     const user = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -25,7 +26,7 @@ export class UsersService {
     return user;
   }
 
-  async findAll() {
+  async findAll(): Promise<Partial<User>[]> {
     return this.prisma.user.findMany({
       select: {
         id: true,
@@ -37,7 +38,7 @@ export class UsersService {
     });
   }
 
-  async create(data: { email: string; password: string; username: string }) {
+  async create(data: { email: string; password: string; username: string }): Promise<Partial<User>> {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     return this.prisma.user.create({
       data: {
@@ -54,7 +55,7 @@ export class UsersService {
     });
   }
 
-  async update(id: number, data: { email?: string; password?: string; username?: string }) {
+  async update(id: number, data: { email?: string; password?: string; username?: string }): Promise<Partial<User>> {
     const user = await this.findById(id);
 
     const updateData = { ...data };
@@ -75,7 +76,7 @@ export class UsersService {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: number): Promise<User> {
     await this.findById(id);
     return this.prisma.user.delete({
       where: { id },
@@ -83,33 +84,37 @@ export class UsersService {
   }
 
   async getUserPreferences(userId: number) {
-    const user = await this.findById(userId);
-    
-    let preferences = await this.prisma.userPreferences.findUnique({
-      where: { userId },
-    });
-
-    if (!preferences) {
-      preferences = await this.prisma.userPreferences.create({
-        data: { userId },
-      });
-    }
-
-    return preferences;
+    await this.findById(userId);
+    const preferences = await this.prisma.$queryRaw`
+      SELECT * FROM "UserPreferences" WHERE "userId" = ${userId}
+    `;
+    return preferences[0] || null;
   }
 
   async updateUserPreferences(userId: number, data: UpdateUserPreferencesDto) {
     await this.findById(userId);
+    const existingPreferences = await this.getUserPreferences(userId);
 
-    const preferences = await this.prisma.userPreferences.upsert({
-      where: { userId },
-      create: {
-        userId,
-        ...data,
-      },
-      update: data,
-    });
-
-    return preferences;
+    if (existingPreferences) {
+      return this.prisma.$executeRaw`
+        UPDATE "UserPreferences"
+        SET
+          "theme" = ${data.theme || existingPreferences.theme},
+          "language" = ${data.language || existingPreferences.language},
+          "notifications" = ${data.notifications ?? existingPreferences.notifications},
+          "updatedAt" = NOW()
+        WHERE "userId" = ${userId}
+      `;
+    } else {
+      return this.prisma.$executeRaw`
+        INSERT INTO "UserPreferences" ("userId", "theme", "language", "notifications")
+        VALUES (
+          ${userId},
+          ${data.theme || 'light'},
+          ${data.language || 'en'},
+          ${data.notifications ?? true}
+        )
+      `;
+    }
   }
 } 
