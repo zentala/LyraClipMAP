@@ -34,8 +34,8 @@
 
 5. **Artists Module Tests**
    [x] Test CRUD operations for artists
-   [ ] Implement tests for artist-song relationships
-   [ ] Test artist metadata handling
+   [x] Implement tests for artist-song relationships
+   [x] Test artist metadata handling
 
 6. **Playlists Module Tests**
    [ ] Test CRUD operations for playlists
