@@ -16,6 +16,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   preferences UserPreferences?
+  playlists Playlist[]
 }
 
 model UserPreferences {
@@ -45,6 +46,7 @@ model Lyrics {
   timestamps Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  song      Song?
 }
 
 model Artist {
@@ -54,6 +56,69 @@ model Artist {
   imageUrl    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  songs       Song[]
+}
+
+model Song {
+  id          Int      @id @default(autoincrement())
+  title       String
+  artistId    Int
+  artist      Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  duration    Int?     // Duration in seconds
+  audioUrl    String?
+  lyricsId    Int?     @unique
+  lyrics      Lyrics?  @relation(fields: [lyricsId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  playlists   PlaylistSong[]
+  tags        SongTag[]
+}
+
+model Playlist {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  isPublic    Boolean  @default(false)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  songs       PlaylistSong[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PlaylistSong {
+  id          Int      @id @default(autoincrement())
+  playlistId  Int
+  playlist    Playlist @relation(fields: [playlistId], references: [id])
+  songId      Int
+  song        Song     @relation(fields: [songId], references: [id])
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([playlistId, songId])
+}
+
+model Tag {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  songs       SongTag[]
+}
+
+model SongTag {
+  id        Int      @id @default(autoincrement())
+  songId    Int
+  song      Song     @relation(fields: [songId], references: [id])
+  tagId     Int
+  tag       Tag      @relation(fields: [tagId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([songId, tagId])
 }
 
 enum UserRole {
