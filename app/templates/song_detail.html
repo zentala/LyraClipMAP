@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ song.title }} by {{ song.artist }} - LyricsFinder</title>
+    <title>{{ song.title }} by {{ song.artist }} - LyraClipMAP</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -93,7 +93,7 @@
 </head>
 <body>
     <header>
-        <h1>LyricsFinder</h1>
+        <h1>LyraClipMAP</h1>
     </header>
 
     <div class="container">
@@ -102,6 +102,10 @@
         <div class="song-details">
             <h1 class="song-title">{{ song.title }}</h1>
             <div class="song-artist">by {{ song.artist }}</div>
+            
+            <div style="margin: 1rem 0;">
+                <a href="/edit/{{ song.id }}" class="btn">Edit Song</a>
+            </div>
 
             {% if youtube_embed %}
             <div class="video-section">

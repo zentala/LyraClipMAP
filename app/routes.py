@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, abort
+from flask import render_template, request, redirect, url_for, abort, flash
 from sqlalchemy import or_, desc
 from app import app, db
 from app.models.models import Song, TextContent, AudioSource
@@ -100,5 +100,97 @@ def add_song():
         
         return redirect(url_for('view_song', song_id=song.id))
         
+    except Exception as e:
+        return str(e), 400
+        
+@app.route('/edit/<int:song_id>', methods=['GET', 'POST'])
+def edit_song(song_id):
+    """Edit an existing song"""
+    song = Song.query.get_or_404(song_id)
+    
+    if request.method == 'GET':
+        # Get lyrics if available
+        lyrics = ""
+        for text in song.text_contents:
+            if text.content_type == "lyrics":
+                lyrics = text.content
+                break
+                
+        # Get YouTube URL if available
+        youtube_url = ""
+        for source in song.audio_sources:
+            if source.source_type == "youtube":
+                youtube_url = source.url
+                break
+                
+        return render_template('edit_song.html', song=song, lyrics=lyrics, youtube_url=youtube_url)
+    
+    try:
+        # Update song data
+        song.title = request.form.get('title', song.title)
+        song.artist = request.form.get('artist', song.artist)
+        
+        # Update lyrics if provided
+        new_lyrics = request.form.get('lyrics')
+        if new_lyrics:
+            # Check if lyrics already exist
+            lyrics_exists = False
+            for text in song.text_contents:
+                if text.content_type == "lyrics":
+                    text.content = new_lyrics
+                    lyrics_exists = True
+                    break
+            
+            # If no lyrics exist, create new
+            if not lyrics_exists:
+                lyrics_content = TextContent(
+                    content=new_lyrics,
+                    content_type="lyrics",
+                    language="unknown"
+                )
+                song.text_contents.append(lyrics_content)
+        
+        # Update YouTube URL if provided
+        new_youtube_url = request.form.get('youtube_url')
+        if new_youtube_url:
+            # Validate and process the URL
+            try:
+                yt_info = extract_youtube_info(new_youtube_url)
+                
+                # Check if YouTube source already exists
+                yt_exists = False
+                for source in song.audio_sources:
+                    if source.source_type == "youtube":
+                        source.url = new_youtube_url
+                        yt_exists = True
+                        break
+                
+                # If no YouTube source exists, create new
+                if not yt_exists:
+                    audio_source = AudioSource(
+                        url=new_youtube_url,
+                        source_type="youtube"
+                    )
+                    song.audio_sources.append(audio_source)
+            except:
+                # Invalid YouTube URL - ignore this update
+                pass
+        
+        # Save changes
+        db.session.commit()
+        return redirect(url_for('view_song', song_id=song.id))
+        
+    except Exception as e:
+        return str(e), 400
+
+@app.route('/delete/<int:song_id>', methods=['POST'])
+def delete_song(song_id):
+    """Delete a song"""
+    song = Song.query.get_or_404(song_id)
+    
+    try:
+        db.session.delete(song)
+        db.session.commit()
+        return redirect(url_for('home'))
     except Exception as e:
         return str(e), 400
