@@ -1,0 +1,502 @@
+{% extends "material_base.html" %}
+
+{% block title %}Add New Song - LyraClipMAP{% endblock %}
+
+{% block styles %}
+.form-container {
+    max-width: 800px;
+    margin: 32px auto;
+    padding: 0 16px;
+}
+
+.form-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 32px;
+}
+
+.form-title {
+    font-size: 24px;
+    font-weight: 500;
+    margin: 0 0 8px 0;
+    text-align: center;
+}
+
+.form-description {
+    color: rgba(0,0,0,0.6);
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: rgba(0,0,0,0.6);
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 4px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.form-input:focus {
+    border-color: var(--md-primary-color);
+    box-shadow: 0 0 0 2px rgba(98, 0, 238, 0.2);
+    outline: none;
+}
+
+.form-textarea {
+    min-height: 200px;
+    resize: vertical;
+}
+
+.form-helper {
+    font-size: 12px;
+    color: rgba(0,0,0,0.6);
+    margin-top: 4px;
+}
+
+.form-submit {
+    display: flex;
+    justify-content: center;
+    margin-top: 32px;
+}
+
+.url-preview {
+    margin-top: 8px;
+    padding: 16px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    display: none;
+}
+
+.url-preview.active {
+    display: flex;
+    align-items: center;
+}
+
+.url-preview-thumbnail {
+    width: 120px;
+    height: 80px;
+    background-color: #e0e0e0;
+    margin-right: 16px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.url-preview-info {
+    flex: 1;
+}
+
+.url-preview-title {
+    font-weight: 500;
+    margin: 0 0 4px 0;
+}
+
+.url-preview-channel {
+    font-size: 14px;
+    color: rgba(0,0,0,0.6);
+    margin: 0;
+}
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-card">
+        <h2 class="form-title">Add New Song</h2>
+        <p class="form-description">Enter a YouTube URL and we'll try to find the song details automatically.</p>
+        
+        <form action="/add" method="POST" id="add-song-form">
+            <div class="form-group">
+                <label class="form-label" for="youtube_url">YouTube URL</label>
+                <input type="text" class="form-input" id="youtube_url" name="youtube_url" 
+                       placeholder="e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ" required>
+                <p class="form-helper">Paste a YouTube video URL to automatically extract song information</p>
+                
+                <div class="url-preview" id="url-preview">
+                    <div class="url-preview-thumbnail" id="preview-thumbnail"></div>
+                    <div class="url-preview-info">
+                        <h4 class="url-preview-title" id="preview-title">Video Title</h4>
+                        <p class="url-preview-channel" id="preview-channel">Channel Name</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="title">Song Title</label>
+                <input type="text" class="form-input" id="title" name="title" placeholder="Will be auto-detected if possible">
+                <p class="form-helper">Optional - will try to detect from YouTube</p>
+                
+                <div id="artist-suggestions" style="margin-top: 8px; display: none;">
+                    <p style="font-size: 12px; color: #6200ee; cursor: pointer; display: none;" id="search-artists-btn">
+                        <i class="material-icons" style="font-size: 14px; vertical-align: middle;">search</i>
+                        Search for better artist information
+                    </p>
+                    <div id="artist-results" style="margin-top: 4px;"></div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="artist">Artist Name</label>
+                <input type="text" class="form-input" id="artist" name="artist" placeholder="Will be auto-detected if possible">
+                <p class="form-helper">Optional - will try to detect from YouTube</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="lyrics">Lyrics</label>
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <button type="button" id="fetch-lyrics-btn" class="md-button md-button--secondary" style="margin-right: 8px; display: none;">
+                        <span class="material-icons">search</span>
+                        Fetch Lyrics
+                    </button>
+                    <div id="lyrics-status" style="font-size: 12px;"></div>
+                </div>
+                <textarea class="form-input form-textarea" id="lyrics" name="lyrics" 
+                          placeholder="Will try to find automatically from multiple sources"></textarea>
+                <p class="form-helper">Optional - we'll search tekstowo.pl, Genius, and Musixmatch for lyrics</p>
+            </div>
+            
+            <div class="form-submit">
+                <button type="submit" class="md-button md-button--raised">
+                    <span class="material-icons">add</span>
+                    Add Song
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlInput = document.getElementById('youtube_url');
+        const titleInput = document.getElementById('title');
+        const artistInput = document.getElementById('artist');
+        const urlPreview = document.getElementById('url-preview');
+        const previewTitle = document.getElementById('preview-title');
+        const previewChannel = document.getElementById('preview-channel');
+        const previewThumbnail = document.getElementById('preview-thumbnail');
+        const fetchLyricsBtn = document.getElementById('fetch-lyrics-btn');
+        const lyricsTextarea = document.getElementById('lyrics');
+        const lyricsStatus = document.getElementById('lyrics-status');
+        
+        let fetchTimeout = null;
+        
+        // Function to fetch lyrics
+        function fetchLyrics() {
+            // Get artist and title
+            const artist = artistInput.value.trim();
+            const title = titleInput.value.trim();
+            
+            if (!artist || !title) {
+                lyricsStatus.textContent = "Please provide both artist and title to fetch lyrics";
+                lyricsStatus.style.color = "red";
+                return;
+            }
+            
+            // Show loading state
+            lyricsStatus.textContent = "Searching for lyrics...";
+            lyricsStatus.style.color = "#6200ee";
+            
+            console.log(`Fetching lyrics for artist: "${artist}", title: "${title}"`);
+            
+            // Show detailed debug panel
+            const debugPanel = document.createElement('div');
+            debugPanel.className = 'lyrics-debug-panel';
+            debugPanel.style.backgroundColor = '#f5f5f5';
+            debugPanel.style.padding = '10px';
+            debugPanel.style.marginTop = '10px';
+            debugPanel.style.borderRadius = '4px';
+            debugPanel.style.fontSize = '12px';
+            debugPanel.style.fontFamily = 'monospace';
+            debugPanel.style.whiteSpace = 'pre-wrap';
+            debugPanel.style.maxHeight = '300px';
+            debugPanel.style.overflowY = 'auto';
+            debugPanel.innerHTML = '<strong>Fetching lyrics...</strong>\n';
+            lyricsStatus.appendChild(debugPanel);
+            
+            // Fetch lyrics from API
+            fetch('/api/fetch_lyrics', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    artist: artist,
+                    title: title
+                })
+            })
+            .then(response => {
+                console.log(`Response status: ${response.status}`);
+                debugPanel.innerHTML += `API Response status: ${response.status}\n`;
+                return response.json();
+            })
+            .then(data => {
+                console.log('API Response:', data);
+                
+                // Add server logs to debug panel if available
+                if (data.debug_log) {
+                    debugPanel.innerHTML += `<details open><summary><b>Server Logs</b></summary><pre style="color:#333; background-color:#f9f9f9; padding:8px; border-radius:4px; max-height:500px; overflow:auto;">${data.debug_log}</pre></details>\n`;
+                }
+                
+                // Add traceback if there's an error
+                if (data.traceback) {
+                    debugPanel.innerHTML += `<span style="color:red">ERROR: ${data.error}</span>\n`;
+                    debugPanel.innerHTML += `<details><summary>Traceback</summary><pre style="color:red">${data.traceback}</pre></details>\n`;
+                }
+                
+                if (data.success && data.lyrics) {
+                    // Update textarea
+                    lyricsTextarea.value = data.lyrics;
+                    lyricsStatus.textContent = "Lyrics found and added!";
+                    lyricsStatus.style.color = "green";
+                    
+                    // Add debug info
+                    debugPanel.innerHTML += `<span style="color:green">✅ SUCCESS! Found lyrics (${data.lyrics.length} characters)</span>\n`;
+                    debugPanel.innerHTML += `<details><summary>Sample lyrics</summary><pre>${data.lyrics.substring(0, 200)}...</pre></details>\n`;
+                    
+                    // Reattach debug panel
+                    lyricsStatus.appendChild(debugPanel);
+                } else {
+                    lyricsStatus.textContent = data.error || "No lyrics found. Try adjusting artist or title.";
+                    lyricsStatus.style.color = "red";
+                    
+                    // Add debug info
+                    debugPanel.innerHTML += `<span style="color:red">❌ No lyrics found in response</span>\n`;
+                    
+                    // Reattach debug panel
+                    lyricsStatus.appendChild(debugPanel);
+                }
+            })
+            .catch(error => {
+                lyricsStatus.textContent = "Error fetching lyrics. Please try again.";
+                lyricsStatus.style.color = "red";
+                console.error('Error fetching lyrics:', error);
+                
+                // Add to debug panel
+                debugPanel.innerHTML += `<span style="color:red">❌ FETCH ERROR: ${error.message}</span>\n`;
+                
+                // Reattach debug panel
+                lyricsStatus.appendChild(debugPanel);
+            });
+        }
+        
+        // Add event listener to fetch lyrics button
+        if (fetchLyricsBtn) {
+            fetchLyricsBtn.addEventListener('click', fetchLyrics);
+        }
+        
+        // Function to check if we should show the fetch lyrics button
+        function checkShowFetchLyricsButton() {
+            if (artistInput.value.trim() && titleInput.value.trim()) {
+                fetchLyricsBtn.style.display = 'flex';
+            } else {
+                fetchLyricsBtn.style.display = 'none';
+            }
+        }
+        
+        // Add event listeners to artist and title inputs
+        artistInput.addEventListener('input', checkShowFetchLyricsButton);
+        titleInput.addEventListener('input', checkShowFetchLyricsButton);
+        
+        // Function to clean YouTube URL of extra parameters
+        function cleanYoutubeUrl(url) {
+            try {
+                // Parse URL
+                const urlObj = new URL(url);
+                
+                // Get video ID
+                let videoId = null;
+                
+                if (urlObj.hostname.includes('youtube.com')) {
+                    videoId = urlObj.searchParams.get('v');
+                } else if (urlObj.hostname.includes('youtu.be')) {
+                    videoId = urlObj.pathname.substring(1);
+                }
+                
+                // Clean URL if we found a video ID
+                if (videoId) {
+                    if (urlObj.hostname.includes('youtube.com')) {
+                        return `https://www.youtube.com/watch?v=${videoId}`;
+                    } else if (urlObj.hostname.includes('youtu.be')) {
+                        return `https://youtu.be/${videoId}`;
+                    }
+                }
+                
+                // If we couldn't clean it, return the original
+                return url;
+            } catch (e) {
+                console.error("Error cleaning URL:", e);
+                return url;
+            }
+        }
+        
+        // Handle URL input changes
+        urlInput.addEventListener('input', function() {
+            // Clear any existing timeout
+            if (fetchTimeout) {
+                clearTimeout(fetchTimeout);
+            }
+            
+            // Only fetch after user stops typing for 500ms
+            fetchTimeout = setTimeout(function() {
+                let youtubeUrl = urlInput.value.trim();
+                
+                // Clean the URL
+                if (youtubeUrl && (youtubeUrl.includes('youtube.com') || youtubeUrl.includes('youtu.be'))) {
+                    const cleanedUrl = cleanYoutubeUrl(youtubeUrl);
+                    
+                    // Log and update URL if it was cleaned
+                    if (cleanedUrl !== youtubeUrl) {
+                        console.log(`Cleaned URL: ${youtubeUrl} -> ${cleanedUrl}`);
+                        youtubeUrl = cleanedUrl;
+                        
+                        // Optionally update the input field with cleaned URL
+                        // urlInput.value = cleanedUrl;
+                    }
+                    
+                    // Debug
+                    console.log("Using URL for fetch:", youtubeUrl);
+                    // Show loading state
+                    urlPreview.classList.add('active');
+                    previewTitle.textContent = "Loading...";
+                    previewChannel.textContent = "";
+                    previewThumbnail.style.backgroundColor = "#f0f0f0";
+                    previewThumbnail.style.backgroundImage = "none";
+                    
+                    // Fetch video info via AJAX
+                    fetch('/material/add', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            youtube_url: youtubeUrl
+                        })
+                    })
+                    .then(response => {
+                        // Debug response
+                        console.log("Response status:", response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Debug data
+                        console.log("API Response data:", data);
+                        
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+                        
+                        // Update preview
+                        previewTitle.textContent = data.title || "Unknown Title";
+                        previewChannel.textContent = data.channel_name || "Unknown Channel";
+                        
+                        // Create a debug info div
+                        let debugInfo = document.createElement('div');
+                        debugInfo.style.fontSize = '12px';
+                        debugInfo.style.color = '#666';
+                        debugInfo.style.marginTop = '8px';
+                        debugInfo.innerHTML = `
+                            <strong>Debug Info:</strong><br>
+                            Video ID: ${data.video_id || 'N/A'}<br>
+                            Title: ${data.title || 'N/A'}<br>
+                            Channel: ${data.channel_name || 'N/A'}<br>
+                            Artist: ${data.artist || 'N/A'}<br>
+                            Song Title: ${data.song_title || 'N/A'}<br>
+                        `;
+                        
+                        // Remove any existing debug info
+                        const existingDebug = document.querySelector('.debug-info');
+                        if (existingDebug) {
+                            existingDebug.remove();
+                        }
+                        
+                        // Add debug info to preview
+                        debugInfo.classList.add('debug-info');
+                        urlPreview.appendChild(debugInfo);
+                        
+                        if (data.thumbnail) {
+                            console.log("Setting thumbnail image:", data.thumbnail);
+                            previewThumbnail.style.backgroundImage = `url(${data.thumbnail})`;
+                            previewThumbnail.style.backgroundSize = 'cover';
+                            previewThumbnail.style.backgroundPosition = 'center';
+                            // Ensure the thumbnail is visible
+                            previewThumbnail.style.display = 'block';
+                            // Add image fallback
+                            previewThumbnail.innerHTML = `<img src="${data.thumbnail}" alt="Thumbnail" style="display:none; width:100%; height:100%; object-fit:cover;" onerror="this.parentNode.style.backgroundColor='#e0e0e0';" onload="this.style.display='block';">`;
+                        } else {
+                            // No thumbnail available, use a placeholder
+                            previewThumbnail.style.backgroundImage = 'none';
+                            previewThumbnail.style.backgroundColor = '#e0e0e0';
+                            previewThumbnail.innerHTML = '<span class="material-icons" style="display:flex; width:100%; height:100%; align-items:center; justify-content:center; color:#999;">music_note</span>';
+                        }
+                        
+                        // Auto-fill form fields if they're empty
+                        if (!titleInput.value && data.song_title) {
+                            titleInput.value = data.song_title;
+                        } else if (!titleInput.value && data.title) {
+                            titleInput.value = data.title;
+                        }
+                        
+                        if (!artistInput.value && data.artist) {
+                            artistInput.value = data.artist;
+                        } else if (!artistInput.value && data.channel_name) {
+                            artistInput.value = data.channel_name;
+                        }
+                        
+                        // Show preview
+                        urlPreview.classList.add('active');
+                        
+                        // Show fetch lyrics button if we have both artist and title
+                        if (artistInput.value && titleInput.value) {
+                            fetchLyricsBtn.style.display = 'flex';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching video info:', error);
+                        previewTitle.textContent = "Could not load video info";
+                        previewChannel.textContent = "Please check the URL";
+                        
+                        // Create error debug info
+                        let debugInfo = document.createElement('div');
+                        debugInfo.style.fontSize = '12px';
+                        debugInfo.style.color = 'red';
+                        debugInfo.style.marginTop = '8px';
+                        debugInfo.innerHTML = `
+                            <strong>Error:</strong> ${error.message || 'Unknown error'}<br>
+                            URL: ${youtubeUrl}<br>
+                            Try removing playlist parameters and query strings from the URL.
+                        `;
+                        
+                        // Remove any existing debug info
+                        const existingDebug = document.querySelector('.debug-info');
+                        if (existingDebug) {
+                            existingDebug.remove();
+                        }
+                        
+                        // Add debug info to preview
+                        debugInfo.classList.add('debug-info');
+                        urlPreview.appendChild(debugInfo);
+                    });
+                } else {
+                    // Hide preview for invalid URL
+                    urlPreview.classList.remove('active');
+                }
+            }, 500);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,343 @@
+{% extends "material_base.html" %}
+
+{% block title %}LyraClipMAP - Your Music Map{% endblock %}
+
+{% block styles %}
+.hero {
+    background: linear-gradient(135deg, var(--md-primary-color), var(--md-primary-variant));
+    color: var(--md-on-primary);
+    padding: 64px 16px;
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.hero h1 {
+    font-size: 48px;
+    font-weight: 300;
+    margin-bottom: 16px;
+}
+
+.hero p {
+    font-size: 18px;
+    max-width: 600px;
+    margin: 0 auto 24px;
+}
+
+.hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.feature-section {
+    padding: 40px 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.feature-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+    margin-top: 32px;
+}
+
+.feature-card {
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+}
+
+.feature-icon {
+    width: 64px;
+    height: 64px;
+    background-color: var(--md-primary-color);
+    color: var(--md-on-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+}
+
+.feature-icon .material-icons {
+    font-size: 32px;
+}
+
+.feature-title {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.section-title {
+    font-size: 32px;
+    font-weight: 300;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.section-subtitle {
+    text-align: center;
+    color: rgba(0,0,0,0.6);
+    margin-bottom: 32px;
+}
+
+.song-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.song-card__media {
+    position: relative;
+    padding-top: 56.25%; /* 16:9 aspect ratio for YouTube thumbnails */
+    background-color: #f0f0f0;
+    overflow: hidden;
+    border-radius: 8px 8px 0 0;
+}
+
+.song-card__media img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.song-card:hover .song-card__media img {
+    transform: scale(1.05);
+}
+
+.song-card__placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+}
+
+.song-card__placeholder .material-icons {
+    font-size: 48px;
+    color: #999;
+    margin-bottom: 8px;
+}
+
+.song-card__placeholder-text {
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    padding: 0 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.song-card__play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 64px;
+    height: 64px;
+    background-color: var(--md-primary-color);
+    color: var(--md-on-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+    cursor: pointer;
+}
+
+.song-card:hover .song-card__play-button {
+    opacity: 1;
+}
+
+.song-card__play-button .material-icons {
+    font-size: 32px;
+}
+
+.song-card__content {
+    padding: 16px;
+    flex-grow: 1;
+}
+
+.song-card__actions {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 16px 16px;
+}
+
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 36px;
+    }
+    
+    .hero p {
+        font-size: 16px;
+    }
+    
+    .feature-cards {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .feature-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .hero-actions {
+        flex-direction: column;
+    }
+}
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <h1>Your Music Map</h1>
+    <p>Discover, organize, and experience your music with lyrics, emotion tracking, and intelligent clip creation.</p>
+    <div class="hero-actions">
+        <a href="/material/add" class="md-button md-button--raised">
+            <span class="material-icons">add</span>
+            Add Song
+        </a>
+        <a href="/about" class="md-button">
+            <span class="material-icons">info</span>
+            Learn More
+        </a>
+    </div>
+</section>
+
+<!-- Song Collection -->
+<section class="feature-section">
+    <h2 class="section-title">Your Song Collection</h2>
+    <p class="section-subtitle">Explore your saved songs with rich metadata and smart organization.</p>
+    
+    <div class="md-masonry-grid">
+        {% for song in songs %}
+        <div class="md-card song-card">
+            <div class="song-card__media">
+                {% if song.thumbnail %}
+                <img src="{{ song.thumbnail }}" alt="{{ song.title }} cover" onerror="this.onerror=null; this.src='https://picsum.photos/seed/{{ song.id }}/400';">
+                {% else %}
+                <div class="song-card__placeholder">
+                    <span class="material-icons">music_note</span>
+                    <div class="song-card__placeholder-text">{{ song.title }}</div>
+                </div>
+                {% endif %}
+                
+                {% if song.video_id %}
+                <a href="https://www.youtube.com/watch?v={{ song.video_id }}" target="_blank" class="song-card__play-button">
+                    <span class="material-icons">play_arrow</span>
+                </a>
+                {% endif %}
+            </div>
+            <div class="song-card__content">
+                <h3 class="md-card__title">{{ song.title }}</h3>
+                <p class="md-card__subtitle">{{ song.artist }}</p>
+            </div>
+            <div class="song-card__actions">
+                <a href="/song/{{ song.id }}" class="md-button">
+                    <span class="material-icons">visibility</span>
+                    View
+                </a>
+                <a href="/material/song/{{ song.id }}" class="md-button md-button--secondary">
+                    <span class="material-icons">auto_awesome</span>
+                    MD View
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Features -->
+<section class="feature-section">
+    <h2 class="section-title">Core Features</h2>
+    <p class="section-subtitle">Everything you need to manage and experience your music library.</p>
+    
+    <div class="feature-cards">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <span class="material-icons">search</span>
+            </div>
+            <h3 class="feature-title">Lyrics Search</h3>
+            <p>Find songs by words, lines, or emotional themes in seconds.</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">
+                <span class="material-icons">insights</span>
+            </div>
+            <h3 class="feature-title">Visual Track Map</h3>
+            <p>See loudness, tempo, mood, and lyrics over time at a glance.</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">
+                <span class="material-icons">content_cut</span>
+            </div>
+            <h3 class="feature-title">Clipping & Tagging</h3>
+            <p>Mark segments, name them, add notes or color tags.</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">
+                <span class="material-icons">auto_stories</span>
+            </div>
+            <h3 class="feature-title">Audio-Lyrics Sync</h3>
+            <p>Karaoke-style sync, automatic or manual alignment.</p>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add animations or other JS functionality here
+        
+        // Example: Animate cards on scroll
+        const animateOnScroll = () => {
+            const cards = document.querySelectorAll('.md-card');
+            cards.forEach(card => {
+                const cardPosition = card.getBoundingClientRect().top;
+                const screenHeight = window.innerHeight;
+                if (cardPosition < screenHeight * 0.9) {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }
+            });
+        };
+        
+        // Initialize card styles
+        const cards = document.querySelectorAll('.md-card');
+        cards.forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        });
+        
+        // Run once on load
+        animateOnScroll();
+        
+        // Listen for scroll events
+        window.addEventListener('scroll', animateOnScroll);
+    });
+</script>
+{% endblock %}
