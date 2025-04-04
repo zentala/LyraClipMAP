@@ -56,9 +56,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # 5. Run the application
-PYTHONPATH=/home/zentala/code/LyraClipMAP python3 -m app.main
+PYTHONPATH=/home/zentala/code/LyraClipMAP python3 app/main.py
 # Or use your actual path to the project:
-# PYTHONPATH=/path/to/LyraClipMAP python3 -m app.main
+# PYTHONPATH=/path/to/LyraClipMAP python3 app/main.py
 
 # 6. Open your browser and navigate to http://localhost:8000
 ```
