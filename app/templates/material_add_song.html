@@ -1,0 +1,199 @@
+{% extends "material_base.html" %}
+
+{% block title %}Add New Song - LyraClipMAP{% endblock %}
+
+{% block styles %}
+.form-container {
+    max-width: 800px;
+    margin: 32px auto;
+    padding: 0 16px;
+}
+
+.form-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 32px;
+}
+
+.form-title {
+    font-size: 24px;
+    font-weight: 500;
+    margin: 0 0 8px 0;
+    text-align: center;
+}
+
+.form-description {
+    color: rgba(0,0,0,0.6);
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: rgba(0,0,0,0.6);
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 4px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.form-input:focus {
+    border-color: var(--md-primary-color);
+    box-shadow: 0 0 0 2px rgba(98, 0, 238, 0.2);
+    outline: none;
+}
+
+.form-textarea {
+    min-height: 200px;
+    resize: vertical;
+}
+
+.form-helper {
+    font-size: 12px;
+    color: rgba(0,0,0,0.6);
+    margin-top: 4px;
+}
+
+.form-submit {
+    display: flex;
+    justify-content: center;
+    margin-top: 32px;
+}
+
+.url-preview {
+    margin-top: 8px;
+    padding: 16px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    display: none;
+}
+
+.url-preview.active {
+    display: flex;
+    align-items: center;
+}
+
+.url-preview-thumbnail {
+    width: 120px;
+    height: 80px;
+    background-color: #e0e0e0;
+    margin-right: 16px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.url-preview-info {
+    flex: 1;
+}
+
+.url-preview-title {
+    font-weight: 500;
+    margin: 0 0 4px 0;
+}
+
+.url-preview-channel {
+    font-size: 14px;
+    color: rgba(0,0,0,0.6);
+    margin: 0;
+}
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-card">
+        <h2 class="form-title">Add New Song</h2>
+        <p class="form-description">Enter a YouTube URL and we'll try to find the song details automatically.</p>
+        
+        <form action="/add" method="POST" id="add-song-form">
+            <div class="form-group">
+                <label class="form-label" for="youtube_url">YouTube URL</label>
+                <input type="text" class="form-input" id="youtube_url" name="youtube_url" 
+                       placeholder="e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ" required>
+                <p class="form-helper">Paste a YouTube video URL to automatically extract song information</p>
+                
+                <div class="url-preview" id="url-preview">
+                    <div class="url-preview-thumbnail" id="preview-thumbnail"></div>
+                    <div class="url-preview-info">
+                        <h4 class="url-preview-title" id="preview-title">Video Title</h4>
+                        <p class="url-preview-channel" id="preview-channel">Channel Name</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="title">Song Title</label>
+                <input type="text" class="form-input" id="title" name="title" placeholder="Will be auto-detected if possible">
+                <p class="form-helper">Optional - will try to detect from YouTube</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="artist">Artist Name</label>
+                <input type="text" class="form-input" id="artist" name="artist" placeholder="Will be auto-detected if possible">
+                <p class="form-helper">Optional - will try to detect from YouTube</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="lyrics">Lyrics</label>
+                <textarea class="form-input form-textarea" id="lyrics" name="lyrics" 
+                          placeholder="Will try to find automatically from tekstowo.pl"></textarea>
+                <p class="form-helper">Optional - we'll try to find lyrics automatically</p>
+            </div>
+            
+            <div class="form-submit">
+                <button type="submit" class="md-button md-button--raised">
+                    <span class="material-icons">add</span>
+                    Add Song
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlInput = document.getElementById('youtube_url');
+        const urlPreview = document.getElementById('url-preview');
+        const previewTitle = document.getElementById('preview-title');
+        const previewChannel = document.getElementById('preview-channel');
+        const previewThumbnail = document.getElementById('preview-thumbnail');
+        
+        // For demo purposes - simulated preview
+        urlInput.addEventListener('blur', function() {
+            if (urlInput.value && urlInput.value.includes('youtube.com/watch?v=')) {
+                // Extract video ID
+                const videoId = urlInput.value.split('v=')[1].split('&')[0];
+                
+                // Set thumbnail background
+                previewThumbnail.style.backgroundImage = `url(https://i.ytimg.com/vi/${videoId}/mqdefault.jpg)`;
+                previewThumbnail.style.backgroundSize = 'cover';
+                previewThumbnail.style.backgroundPosition = 'center';
+                
+                // Show preview
+                urlPreview.classList.add('active');
+                
+                // In a real implementation, you would fetch video data from an API
+                // This is just a simulation
+                previewTitle.textContent = "Example Song Title";
+                previewChannel.textContent = "Example Artist Channel";
+            } else {
+                urlPreview.classList.remove('active');
+            }
+        });
+    });
+</script>
+{% endblock %}

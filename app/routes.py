@@ -219,3 +219,8 @@ def material_view_song(song_id):
                 continue
     
     return render_template('material_song_detail.html', song=song, youtube_embed=youtube_embed)
+
+@app.route('/material/add', methods=['GET'])
+def material_add_song():
+    """Add new song page with Material Design UI"""
+    return render_template('material_add_song.html')
