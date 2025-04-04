@@ -281,3 +281,12 @@ pnpm prisma:migrate    # Run migrations
 ```bash
 pnpm prisma:studio
 ```
+
+## Documentation
+
+- [Project Overview](docs/README.md)
+- [Version History](docs/VERSION.md)
+- [Development Plan](docs/TODO.md)
+- [Architecture](docs/architecture/README.md)
+- [Features](docs/features/README.md)
+- [Development Guide](docs/development/README.md)
