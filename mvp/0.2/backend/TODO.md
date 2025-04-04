@@ -5,223 +5,6 @@
 * in every point / task
 * manitain this `TODO.md` as: Groups > Tasks > TODO Actions
 
-# Test Repair Plan (2024-03-XX)
-
-## Analiza błędów
-
-Znaleziono 3 główne kategorie błędów w testach:
-
-1. Błędy w `media-flow.spec.ts`:
-   - Test "should handle non-existent song deletion" nie przechodzi
-   - Promise jest rozwiązywana zamiast odrzucana przy próbie usunięcia nieistniejącego utworu
-
-2. Błędy w `entity-relationships.spec.ts`:
-   - Dwa testy związane z relacją Artist-Song nie przechodzą
-   - NotFoundException jest rzucany przy próbie utworzenia piosenki z nieistniejącym artystą
-
-3. Błędy w `artists.integration.spec.ts`:
-   - Błąd PrismaClientKnownRequestError przy próbie usunięcia artysty
-   - Problem z czyszczeniem danych testowych w afterAll
-
-## Plan naprawy
-
-### 1. Naprawa obsługi usuwania nieistniejących utworów
-**Commit name:** `fix(backend): improve error handling for non-existent song deletion`
-
-**Pliki do modyfikacji:**
-- `./backend/src/songs/songs.service.ts`
-- `./backend/src/tests/media-flow.spec.ts`
-
-**Wytyczne techniczne:**
-- Zmodyfikować metodę `remove` w `SongsService`, aby najpierw sprawdzała istnienie utworu
-- Zaktualizować mock w testach, aby prawidłowo symulował zachowanie Prisma
-- Dodać obsługę błędów Prisma
-
-**Implementacja:**
-```typescript
-// W SongsService
-async remove(id: number) {
-  const song = await this.prisma.song.findUnique({
-    where: { id }
-  });
-  if (!song) {
-    throw new NotFoundException(`Song with ID ${id} not found`);
-  }
-  return this.prisma.song.delete({
-    where: { id }
-  });
-}
-
-// W media-flow.spec.ts
-mockPrismaService.song.findUnique.mockResolvedValue(null);
-mockPrismaService.song.delete.mockRejectedValue(
-  new PrismaClientKnownRequestError('Record not found', {
-    code: 'P2025',
-    clientVersion: '5.0.0'
-  })
-);
-```
-
-### 2. Naprawa testów relacji Artist-Song
-**Commit name:** `fix(backend): correct artist-song relationship tests`
-
-**Pliki do modyfikacji:**
-- `./backend/src/tests/entity-relationships.spec.ts`
-- `./backend/src/songs/songs.service.ts`
-
-**Wytyczne techniczne:**
-- Poprawić implementację mocków w testach
-- Zaktualizować obsługę błędów w serwisie
-- Dodać prawidłową walidację istnienia artysty
-
-**Implementacja:**
-```typescript
-// W entity-relationships.spec.ts
-mockPrismaService.artist.findUnique.mockResolvedValue(null);
-mockPrismaService.song.create.mockRejectedValue(
-  new PrismaClientKnownRequestError('Foreign key constraint failed', {
-    code: 'P2003',
-    clientVersion: '5.0.0'
-  })
-);
-```
-
-### 3. Naprawa testów integracyjnych artystów
-**Commit name:** `fix(backend): improve artist integration tests cleanup`
-
-**Pliki do modyfikacji:**
-- `./backend/src/artists/tests/artists.integration.spec.ts`
-
-**Wytyczne techniczne:**
-- Dodać prawidłowe czyszczenie danych testowych
-- Zaimplementować obsługę przypadku, gdy artysta już nie istnieje
-- Użyć `deleteMany` zamiast `delete` dla bezpieczniejszego czyszczenia
-
-**Implementacja:**
-```typescript
-afterAll(async () => {
-  try {
-    await prismaService.song.deleteMany({
-      where: { artistId: createdArtist.id }
-    });
-    await prismaService.artist.deleteMany({
-      where: { id: createdArtist.id }
-    });
-  } catch (error) {
-    console.warn('Cleanup error:', error);
-  }
-});
-```
-
-## Kolejność implementacji:
-1. Najpierw naprawić obsługę usuwania nieistniejących utworów (#1)
-2. Następnie poprawić testy relacji Artist-Song (#2)
-3. Na końcu naprawić testy integracyjne artystów (#3)
-
-## Uwagi:
-- Każda zmiana powinna być poprzedzona testami jednostkowymi
-- Należy zachować istniejące testy i tylko je poprawić
-- Dodać odpowiednie komentarze w kodzie
-- Zaktualizować dokumentację API jeśli to konieczne
-
-## Priority Issues
-
-### 1. Fix Song Creation (High Priority) ✅
-**Commit name:** `fix(backend): resolve song creation 404 error`
-**Files to check:**
-- `src/songs/songs.service.ts`
-- `src/songs/songs.controller.ts`
-- `src/songs/tests/songs.integration.spec.ts`
-
-**Technical Guidelines:**
-- Verify artist and lyrics existence before song creation
-- Add proper error handling for non-existent resources
-- Update error responses to match API documentation
-- Add logging for debugging purposes
-
-**Implementation Steps:**
-```typescript
-// In SongsService
-async create(createSongDto: CreateSongDto) {
-  const artist = await this.prisma.artist.findUnique({
-    where: { id: createSongDto.artistId }
-  });
-  if (!artist) throw new NotFoundException('Artist not found');
-
-  if (createSongDto.lyricsId) {
-    const lyrics = await this.prisma.lyrics.findUnique({
-      where: { id: createSongDto.lyricsId }
-    });
-    if (!lyrics) throw new NotFoundException('Lyrics not found');
-  }
-
-  return this.prisma.song.create({
-    data: createSongDto,
-    include: { artist: true, lyrics: true }
-  });
-}
-```
-
-### 2. Fix Song Deletion Error Handling ✅
-**Commit name:** `fix(backend): improve song deletion error handling`
-**Files to check:**
-- `src/songs/songs.service.ts`
-- `src/tests/media-flow.spec.ts`
-
-**Technical Guidelines:**
-- Ensure proper error throwing for non-existent songs
-- Update transaction handling in delete operations
-- Add proper error mapping in service layer
-
-**Implementation Steps:**
-```typescript
-// In SongsService
-async remove(id: number) {
-  const song = await this.prisma.song.findUnique({
-    where: { id }
-  });
-  if (!song) throw new NotFoundException(`Song with ID ${id} not found`);
-
-  return this.prisma.song.delete({
-    where: { id }
-  });
-}
-```
-
-### 3. Fix Entity Relationship Error Handling ✅
-**Commit name:** `fix(backend): standardize entity relationship error handling`
-**Files to check:**
-- `src/tests/entity-relationships.spec.ts`
-- `src/songs/songs.service.ts`
-- `src/common/exceptions/prisma-error.handler.ts`
-
-**Technical Guidelines:**
-- Standardize error handling across entity relationships
-- Create common error handling utilities
-- Update test mocks to properly simulate Prisma errors
-
-**Implementation Steps:**
-```typescript
-// In PrismaErrorHandler
-export class PrismaErrorHandler {
-  static handle(error: any) {
-    if (error.code === 'P2025') {
-      throw new NotFoundException('Record not found');
-    }
-    throw error;
-  }
-}
-
-// In SongsService
-try {
-  return await this.prisma.song.create({
-    data: createSongDto
-  });
-} catch (error) {
-  throw PrismaErrorHandler.handle(error);
-}
-```
-
 ## Implementation Order:
 1. ✅ Start with Song Creation fix as it affects the main API functionality
 2. ✅ Implement Song Deletion error handling
@@ -252,10 +35,10 @@ try {
 - [ ] Update controller to match expected response codes
 - [ ] Add proper response serialization
 
-4. Fix Error Handling
-- [ ] Update mock implementations for non-existent records
-- [ ] Add proper error throwing in service layer
-- [ ] Update tests to properly handle async errors
+4. Fix Error Handling ✅
+- [x] Update mock implementations for non-existent records
+- [x] Add proper error throwing in service layer
+- [x] Update tests to properly handle async errors
 
 ## Implementation Steps
 
@@ -284,7 +67,7 @@ if (!record) throw new NotFoundException();
 
 # Test Fixes Plan (2024-03-XX)
 
-## 1. Fix Song Deletion Tests
+## 1. Fix Song Deletion Tests ✅
 ### Technical Guidelines:
 - Review `SongsService.remove()` implementation
 - Ensure proper error handling for non-existent records
@@ -295,7 +78,7 @@ if (!record) throw new NotFoundException();
   - `src/songs/songs.controller.ts`
   - `src/tests/media-flow.spec.ts`
 
-## 2. Fix Artist-Song Relationship Tests
+## 2. Fix Artist-Song Relationship Tests ✅
 ### Technical Guidelines:
 - Review Prisma schema for Artist-Song relationship
 - Verify cascade delete settings
@@ -453,10 +236,10 @@ if (!record) throw new NotFoundException();
    [x] Verify refresh token mechanism
    [x] Test permission cascades across resources
 
-2. **Song Management Pipeline**
-   [ ] Test song creation with artist assignment
-   [ ] Validate audio source processing
-   [ ] Test lyrics attachment and processing
+2. **Song Management Pipeline** ✅
+   [x] Test song creation with artist assignment
+   [x] Validate audio source processing
+   [x] Test lyrics attachment and processing
 
 3. **Search Functionality**
    [ ] Test search with filtering capabilities
@@ -480,10 +263,10 @@ if (!record) throw new NotFoundException();
    [x] Verify account management endpoints
    [x] Test authorization on protected routes
 
-2. **Artists and Songs API**
+2. **Artists and Songs API** ✅
    [x] Test complete CRUD for artists and songs
-   [ ] Verify relationships between entities
-   [ ] Test media association flows
+   [x] Verify relationships between entities
+   [x] Test media association flows
 
 3. **Playlists and Collections API**
    [ ] Test playlist creation and management
@@ -502,10 +285,10 @@ if (!record) throw new NotFoundException();
 
 ## Infrastructure Tasks (3-5 story points each)
 
-1. **Test Database Setup**
-   [ ] Configure isolated test database
-   [ ] Implement database seeding for tests
-   [ ] Create database reset mechanisms
+1. **Test Database Setup** ✅
+   [x] Configure isolated test database
+   [x] Implement database seeding for tests
+   [x] Create database reset mechanisms
 
 2. **Mock Service Implementation**
    [x] Create comprehensive mocks for external services
