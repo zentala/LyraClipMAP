@@ -1,0 +1,75 @@
+{% extends "material_base.html" %}
+
+{% block title %}Error - LyraClipMAP{% endblock %}
+
+{% block styles %}
+.error-container {
+    max-width: 800px;
+    margin: 32px auto;
+    padding: 16px;
+}
+
+.error-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 32px;
+}
+
+.error-title {
+    color: #d32f2f;
+    font-size: 24px;
+    margin-bottom: 16px;
+}
+
+.error-message {
+    margin-bottom: 24px;
+}
+
+.error-actions {
+    margin-top: 32px;
+}
+
+.error-debug {
+    margin-top: 32px;
+    padding: 16px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    overflow: auto;
+    max-height: 400px;
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+}
+{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-card">
+        <h2 class="error-title">Something went wrong</h2>
+        
+        <div class="error-message">
+            {{ error }}
+        </div>
+        
+        <div class="error-actions">
+            <a href="/" class="md-button md-button--raised">
+                <span class="material-icons">home</span>
+                Return to Home
+            </a>
+            
+            <a href="javascript:history.back()" class="md-button">
+                <span class="material-icons">arrow_back</span>
+                Go Back
+            </a>
+        </div>
+        
+        {% if traceback %}
+        <details>
+            <summary>Technical Details</summary>
+            <div class="error-debug">{{ traceback }}</div>
+        </details>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

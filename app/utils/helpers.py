@@ -4,39 +4,6 @@ import urllib.parse
 from bs4 import BeautifulSoup
 from typing import Optional, Dict, Tuple
 
-def extract_youtube_info(url: str) -> Dict[str, str]:
-    """
-    Extract video ID and other info from YouTube URL
-    Returns dict with video details
-    """
-    # Clean up the URL by removing parameters like playlist and start_radio
-    url = clean_youtube_url(url)
-    print(f"Cleaned YouTube URL: {url}")
-    
-    # Extract video ID from different YouTube URL formats
-    parsed_url = urllib.parse.urlparse(url)
-    video_id = None
-    
-    if parsed_url.hostname in ('www.youtube.com', 'youtube.com'):
-        if parsed_url.path == '/watch':
-            query = urllib.parse.parse_qs(parsed_url.query)
-            if 'v' in query:
-                video_id = query['v'][0]
-        elif parsed_url.path.startswith(('/embed/', '/v/')):
-            video_id = parsed_url.path.split('/')[2]
-            if '?' in video_id:
-                video_id = video_id.split('?')[0]
-    elif parsed_url.hostname == 'youtu.be':
-        video_id = parsed_url.path[1:]
-        if '?' in video_id:
-            video_id = video_id.split('?')[0]
-    
-    # Debug output
-    print(f"URL: {url}, Parsed video_id: {video_id}")
-    
-    if not video_id:
-        raise ValueError("Invalid YouTube URL")
-        
 def clean_youtube_url(url: str) -> str:
     """
     Clean YouTube URL by removing unnecessary parameters like playlist and start_radio
@@ -71,6 +38,39 @@ def clean_youtube_url(url: str) -> str:
     
     # If anything goes wrong, return the original URL
     return url
+
+def extract_youtube_info(url: str) -> Dict[str, str]:
+    """
+    Extract video ID and other info from YouTube URL
+    Returns dict with video details
+    """
+    # Clean up the URL by removing parameters like playlist and start_radio
+    url = clean_youtube_url(url)
+    print(f"Cleaned YouTube URL: {url}")
+    
+    # Extract video ID from different YouTube URL formats
+    parsed_url = urllib.parse.urlparse(url)
+    video_id = None
+    
+    if parsed_url.hostname in ('www.youtube.com', 'youtube.com'):
+        if parsed_url.path == '/watch':
+            query = urllib.parse.parse_qs(parsed_url.query)
+            if 'v' in query:
+                video_id = query['v'][0]
+        elif parsed_url.path.startswith(('/embed/', '/v/')):
+            video_id = parsed_url.path.split('/')[2]
+            if '?' in video_id:
+                video_id = video_id.split('?')[0]
+    elif parsed_url.hostname == 'youtu.be':
+        video_id = parsed_url.path[1:]
+        if '?' in video_id:
+            video_id = video_id.split('?')[0]
+    
+    # Debug output
+    print(f"URL: {url}, Parsed video_id: {video_id}")
+    
+    if not video_id:
+        raise ValueError("Invalid YouTube URL")
     
     # Try to use oembed endpoint to get structured data (no API key needed)
     # This is one of the most reliable methods without using the official API
@@ -94,6 +94,8 @@ def clean_youtube_url(url: str) -> str:
             try:
                 info_url = f"https://www.youtube.com/get_video_info?video_id={video_id}"
                 info_response = requests.get(info_url, headers=headers)
+                print(f"Video info response status: {info_response.status_code}")
+                
                 if info_response.status_code == 200:
                     info_data = urllib.parse.parse_qs(info_response.text)
                     # Extract description if available
@@ -102,12 +104,35 @@ def clean_youtube_url(url: str) -> str:
                         player_response = json.loads(info_data['player_response'][0])
                         video_details = player_response.get('videoDetails', {})
                         description = video_details.get('shortDescription', '')
+                        print(f"Found description in video_info ({len(description)} chars)")
                     else:
+                        print("No player_response found in video_info")
                         description = ""
                 else:
                     description = ""
-            except:
+            except Exception as e:
+                print(f"Error fetching video description: {e}")
                 description = ""
+            
+            # Try to extract artist and title from description if present
+            if description:
+                print(f"Analyzing YouTube description: {description[:200]}...")
+                desc_artist, desc_title = extract_info_from_description(description)
+                
+                # Use description-extracted info if available and current info is weak
+                if desc_artist and (artist == "Unknown Artist" or desc_artist in channel_name):
+                    print(f"Found artist in description: {desc_artist}")
+                    artist = desc_artist
+                
+                if desc_title and (song_title == "Unknown Title" or song_title == title):
+                    print(f"Found title in description: {desc_title}")
+                    song_title = desc_title
+                
+                # Special case for "Topic" channels, which are official artist channels
+                if channel_name and "- Topic" in channel_name and artist == "Unknown Artist":
+                    topic_artist = channel_name.replace(" - Topic", "").strip()
+                    print(f"Using artist name from Topic channel: {topic_artist}")
+                    artist = topic_artist
             
             return {
                 'video_id': video_id,
@@ -140,15 +165,90 @@ def clean_youtube_url(url: str) -> str:
         channel_name = None
         
         for tag in meta_tags:
-            if tag.get('property') == 'og:description':
+            if tag.get('property') == 'og:description' or tag.get('name') == 'description':
                 description = tag.get('content')
+                print(f"Found description in meta tag: '{description[:100]}...'")
             elif tag.get('property') == 'og:image':
                 thumbnail = tag.get('content')
             elif tag.get('name') == 'author':
                 channel_name = tag.get('content')
+            elif tag.get('property') == 'og:site_name':
+                if not channel_name and '- Topic' in tag.get('content', ''):
+                    channel_name = tag.get('content')
+                    print(f"Found channel from og:site_name: '{channel_name}'")
+        
+        # Try to find more channel info
+        for link in soup.find_all('link', {'rel': 'canonical'}):
+            if 'channel' in link.get('href', ''):
+                channel_title = link.get('title')
+                if channel_title and (not channel_name or len(channel_title) > len(channel_name)):
+                    channel_name = channel_title
+                    print(f"Found channel from canonical link: '{channel_name}'")
+        
+        # Look for channel info in span elements with specific attributes
+        for span in soup.find_all('span', attrs={'itemprop': 'author'}):
+            author_link = span.find('link', attrs={'itemprop': 'name'})
+            if author_link and author_link.get('content'):
+                channel_name = author_link.get('content')
+                print(f"Found channel from itemprop author: '{channel_name}'")
+                break
         
         # Extract artist and song title using the format_youtube_title function
         artist, song_title = format_youtube_title(title) if title else ("Unknown Artist", "Unknown Title")
+        
+        # Attempt to fetch full description from the HTML
+        full_description = ""
+        try:
+            # Look for the description in the HTML
+            description_container = soup.select_one('meta[name="description"]')
+            if description_container:
+                full_description = description_container.get('content', '')
+                print(f"Found full description in meta tag ({len(full_description)} chars)")
+            
+            # Try to find description in script tag
+            if not full_description:
+                for script in soup.find_all('script'):
+                    if script.string and '"description":"' in script.string:
+                        try:
+                            import json
+                            import re
+                            # Extract JSON data from script
+                            match = re.search(r'({.*})', script.string)
+                            if match:
+                                json_str = match.group(1)
+                                data = json.loads(json_str)
+                                if isinstance(data, dict) and 'description' in data:
+                                    full_description = data['description']
+                                    print(f"Found full description in script ({len(full_description)} chars)")
+                                    break
+                        except Exception as script_error:
+                            print(f"Error extracting description from script: {script_error}")
+        except Exception as desc_error:
+            print(f"Error finding full description: {desc_error}")
+            
+        # Use the more detailed description if available
+        if full_description and len(full_description) > len(description or ""):
+            description = full_description
+        
+        # Try to extract artist and title from description if present
+        if description:
+            print(f"Analyzing YouTube description: {description[:200]}...")
+            desc_artist, desc_title = extract_info_from_description(description)
+            
+            # Use description-extracted info if available and current info is weak
+            if desc_artist and (artist == "Unknown Artist" or desc_artist in channel_name):
+                print(f"Found artist in description: {desc_artist}")
+                artist = desc_artist
+            
+            if desc_title and (song_title == "Unknown Title" or song_title == title):
+                print(f"Found title in description: {desc_title}")
+                song_title = desc_title
+                
+            # Special case for "Topic" channels, which are official artist channels
+            if channel_name and "- Topic" in channel_name and artist == "Unknown Artist":
+                topic_artist = channel_name.replace(" - Topic", "").strip()
+                print(f"Using artist name from Topic channel: {topic_artist}")
+                artist = topic_artist
         
         # Try to extract channel name from JSON-LD data
         script_tags = soup.find_all('script', {'type': 'application/ld+json'})
@@ -181,6 +281,137 @@ def clean_youtube_url(url: str) -> str:
             'channel_name': "Unknown Channel",
             'thumbnail': f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"
         }
+
+def extract_info_from_description(description: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Attempt to extract artist and song title from YouTube video description
+    Returns a tuple of (artist, title) or (None, None) if not found
+    """
+    artist = None
+    title = None
+    
+    # Common patterns in descriptions
+    track_patterns = [
+        r'Track\s*\d*\s*:\s*([^\n\r]+)',  # "Track 06: Noce Szatana"
+        r'\bTrack\b\s*:\s*([^\n\r]+)',    # "Track: Song Title"
+        r'\bTitle\b\s*:\s*([^\n\r]+)',    # "Title: Song Title"
+        r'\bSong\b\s*:\s*([^\n\r]+)'      # "Song: Song Title"
+    ]
+    
+    artist_patterns = [
+        r'Artist\s*:\s*(.+)',       # "Artist: Kat"
+        r'Band\s*:\s*(.+)',         # "Band: Kat"
+        r'by\s+(.+?)\s*$',          # "by Kat"
+        r'^(.+?)\s*\((\d{4})\)',     # "Kat (1986)"
+        # Look for standalone artist names (often listed at the top of descriptions)
+        r'^\s*([A-Za-z0-9\s&]+)\s*$'  # Stand-alone name like "Kat" on a line by itself
+    ]
+    
+    # Look for album info which often appears near track info
+    album_patterns = [
+        r'Album\s*:\s*(.+)',        # "Album: 666"
+        r'From\s+(.+?)\s*\((\d{4})\)' # "From 666 (1986)"
+    ]
+    
+    # Process description line by line for better pattern matching
+    lines = description.split('\n')
+    
+    # Pre-process the description if it appears to be concatenated text without newlines
+    # This is common in YouTube API responses where newlines are stripped
+    if len(lines) <= 5 and len(description) > 100:
+        # Try to detect natural breaks like numbers followed by words
+        processed_text = re.sub(r'(\d+)([A-Za-z])', r'\1\n\2', description)
+        # Try to detect Track markers
+        processed_text = re.sub(r'(Track\s*\d*\s*:)', r'\n\1', processed_text)
+        # Try to separate artist names from other text
+        processed_text = re.sub(r'([a-zA-Z0-9])(http)', r'\1\n\2', processed_text)
+        # Replace concatenated album title and year with newline
+        processed_text = re.sub(r'([a-zA-Z])(\(\d{4}\))', r'\1\n\2', processed_text)
+        # Separate Playlist keyword
+        processed_text = re.sub(r'(Playlist)', r'\n\1', processed_text)
+        
+        # If we changed the text, update our lines
+        if processed_text != description:
+            print(f"Pre-processed concatenated description")
+            lines = processed_text.split('\n')
+    
+    # First pass: look for the most reliable artist indicators - standalone lines in the first 5 lines
+    # This helps prioritize actual artist names over album names or other metadata
+    potential_artist_names = []
+    for i, line in enumerate(lines[:5]):  # Check first 5 lines which often contain basic info
+        line = line.strip()
+        if line and len(line) < 30:  # Avoid long lines which are likely not just artist names
+            # Check if line looks like a standalone artist name (1-3 words)
+            words = line.split()
+            if 1 <= len(words) <= 3 and all(len(word) > 1 for word in words):
+                if not any(ch in line for ch in [':', '-', '/', 'http']):  # Avoid lines with separators or URLs
+                    potential_artist_names.append(line)
+                    print(f"Found potential artist name: '{line}'")
+    
+    # If we found any potential artist names, use the first one
+    if potential_artist_names:
+        artist = potential_artist_names[0]
+    
+    # Regular pattern matching
+    for line in lines:
+        line = line.strip()
+        
+        # Look for track/title info
+        if not title:
+            for pattern in track_patterns:
+                match = re.search(pattern, line)
+                if match:
+                    raw_title = match.group(1).strip()
+                    # Clean up track titles that may have URLs or other concatenated text
+                    if 'http' in raw_title or len(raw_title) > 50:
+                        # Try to isolate just the title part
+                        title_parts = re.split(r'(https?://|Playlist|Full Album)', raw_title)
+                        if len(title_parts) > 1:
+                            title = title_parts[0].strip()
+                        else:
+                            title = raw_title
+                    else:
+                        title = raw_title
+                    print(f"Found title from description pattern: '{title}'")
+                    break
+                    
+        # Look for artist info if we didn't find one in the first pass
+        if not artist:
+            for pattern in artist_patterns:
+                match = re.search(pattern, line)
+                if match:
+                    raw_artist = match.group(1).strip()
+                    # For "Kat666", split into "Kat" and "666" if digits are present
+                    if re.search(r'[a-zA-Z]+\d+', raw_artist):
+                        artist_match = re.match(r'([a-zA-Z]+)(\d+.*)', raw_artist)
+                        if artist_match:
+                            artist = artist_match.group(1)
+                            print(f"Cleaned up artist name from '{raw_artist}' to '{artist}'")
+                        else:
+                            artist = raw_artist
+                    else:
+                        artist = raw_artist
+                    print(f"Found artist from description pattern: '{artist}'")
+                    break
+        
+        # If we have both, we can stop
+        if artist and title:
+            break
+            
+    # If there's a line with "Artist - Title" format, process it
+    for line in lines:
+        if " - " in line and not (artist and title):
+            parts = line.split(" - ", 1)
+            if len(parts) == 2:
+                # Only use this if cleaner patterns didn't match
+                if not artist:
+                    artist = parts[0].strip()
+                if not title:
+                    title = parts[1].strip()
+                print(f"Found artist-title pair from description: '{artist} - {title}'")
+                break
+    
+    return artist, title
 
 def get_youtube_embed_html(video_id: str) -> str:
     """Generate YouTube embed HTML code"""

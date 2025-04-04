@@ -2,6 +2,7 @@ from flask import render_template, request, redirect, url_for, abort, flash
 from sqlalchemy import or_, desc
 from app import app, db
 from app.models.models import Song, TextContent, AudioSource
+import urllib.parse
 from app.utils.helpers import (
     extract_youtube_info,
     get_youtube_embed_html,
@@ -361,51 +362,110 @@ def delete_song(song_id):
 @app.route('/material')
 def material_home():
     """Home page with Material Design UI"""
-    songs = Song.query.order_by(desc(Song.id)).all()
-    
-    # Get thumbnails and video info for each song
-    songs_with_info = []
-    for song in songs:
-        song_info = {
-            'id': song.id,
-            'title': song.title,
-            'artist': song.artist,
-            'thumbnail': None,
-            'video_id': None
-        }
+    try:
+        songs = Song.query.order_by(desc(Song.id)).all()
         
-        # Look for YouTube sources
-        for source in song.audio_sources:
-            if source.source_type == "youtube":
-                try:
-                    yt_info = extract_youtube_info(source.url)
-                    song_info['thumbnail'] = yt_info.get('thumbnail')
-                    song_info['video_id'] = yt_info.get('video_id')
+        # Get thumbnails and video info for each song
+        songs_with_info = []
+        for song in songs:
+            song_info = {
+                'id': song.id,
+                'title': song.title,
+                'artist': song.artist,
+                'thumbnail': None,
+                'video_id': None
+            }
+            
+            # Look for YouTube sources
+            for source in song.audio_sources:
+                if source.source_type == "youtube":
+                    # Generate a default thumbnail URL without calling the API
+                    # This ensures we always have something to display
+                    try:
+                        # Parse video ID without calling the full info extraction
+                        parsed_url = urllib.parse.urlparse(source.url)
+                        video_id = None
+                        
+                        if parsed_url.hostname in ('www.youtube.com', 'youtube.com'):
+                            if parsed_url.path == '/watch':
+                                query = urllib.parse.parse_qs(parsed_url.query)
+                                if 'v' in query:
+                                    video_id = query['v'][0]
+                            elif parsed_url.path.startswith(('/embed/', '/v/')):
+                                video_id = parsed_url.path.split('/')[2]
+                                if '?' in video_id:
+                                    video_id = video_id.split('?')[0]
+                        elif parsed_url.hostname == 'youtu.be':
+                            video_id = parsed_url.path[1:]
+                            if '?' in video_id:
+                                video_id = video_id.split('?')[0]
+                        
+                        if video_id:
+                            song_info['thumbnail'] = f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"
+                            song_info['video_id'] = video_id
+                    except Exception as e:
+                        print(f"Error parsing video ID: {e}")
                     break
-                except:
-                    continue
+            
+            songs_with_info.append(song_info)
         
-        songs_with_info.append(song_info)
-    
-    return render_template('material_index.html', songs=songs_with_info)
+        return render_template('material_index.html', songs=songs_with_info)
+    except Exception as e:
+        import traceback
+        error_msg = f"Error loading material home page: {str(e)}"
+        traceback_str = traceback.format_exc()
+        print(error_msg)
+        print(traceback_str)
+        return render_template('error.html', error=error_msg, traceback=traceback_str)
     
 @app.route('/material/song/<int:song_id>')
 def material_view_song(song_id):
     """View a specific song with Material Design UI"""
-    song = Song.query.get_or_404(song_id)
-    
-    # Get YouTube embed HTML if available
-    youtube_embed = None
-    for source in song.audio_sources:
-        if source.source_type == "youtube":
-            try:
-                yt_info = extract_youtube_info(source.url)
-                youtube_embed = get_youtube_embed_html(yt_info['video_id'])
-                break
-            except:
-                continue
-    
-    return render_template('material_song_detail.html', song=song, youtube_embed=youtube_embed)
+    try:
+        song = Song.query.get_or_404(song_id)
+        
+        # Get YouTube embed HTML if available
+        youtube_embed = None
+        youtube_video_id = None
+        
+        for source in song.audio_sources:
+            if source.source_type == "youtube":
+                try:
+                    # Parse video ID directly without calling the full extraction
+                    parsed_url = urllib.parse.urlparse(source.url)
+                    video_id = None
+                    
+                    if parsed_url.hostname in ('www.youtube.com', 'youtube.com'):
+                        if parsed_url.path == '/watch':
+                            query = urllib.parse.parse_qs(parsed_url.query)
+                            if 'v' in query:
+                                video_id = query['v'][0]
+                        elif parsed_url.path.startswith(('/embed/', '/v/')):
+                            video_id = parsed_url.path.split('/')[2]
+                            if '?' in video_id:
+                                video_id = video_id.split('?')[0]
+                    elif parsed_url.hostname == 'youtu.be':
+                        video_id = parsed_url.path[1:]
+                        if '?' in video_id:
+                            video_id = video_id.split('?')[0]
+                    
+                    if video_id:
+                        youtube_video_id = video_id
+                        youtube_embed = get_youtube_embed_html(video_id)
+                    break
+                except Exception as e:
+                    print(f"Error parsing YouTube URL: {e}")
+                    continue
+        
+        return render_template('material_song_detail.html', song=song, youtube_embed=youtube_embed, 
+                              video_id=youtube_video_id)
+    except Exception as e:
+        import traceback
+        error_msg = f"Error loading song detail page: {str(e)}"
+        traceback_str = traceback.format_exc()
+        print(error_msg)
+        print(traceback_str)
+        return render_template('error.html', error=error_msg, traceback=traceback_str)
 
 @app.route('/material/add', methods=['GET', 'POST'])
 def material_add_song():
