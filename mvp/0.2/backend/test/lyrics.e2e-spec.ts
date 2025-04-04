@@ -18,11 +18,11 @@ describe('LyricsController (e2e)', () => {
     await app.init();
 
     // Wyczyść bazę danych przed każdym testem
-    await prismaService.lyrics.deleteMany();
+    await prismaService.$executeRaw`TRUNCATE TABLE "Lyrics" CASCADE`;
   });
 
   afterEach(async () => {
-    await prismaService.lyrics.deleteMany();
+    await prismaService.$executeRaw`TRUNCATE TABLE "Lyrics" CASCADE`;
     await app.close();
   });
 

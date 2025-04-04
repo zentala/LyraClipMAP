@@ -50,6 +50,14 @@ describe('Artists Integration Tests', () => {
 
     await app.init();
 
+    // Clean up database before tests
+    await prismaService.$transaction([
+      prismaService.song.deleteMany(),
+      prismaService.lyrics.deleteMany(),
+      prismaService.artist.deleteMany(),
+      prismaService.user.deleteMany(),
+    ]);
+
     // Create test users and get their tokens
     adminUser = await prismaService.user.create({
       data: {
@@ -84,6 +92,8 @@ describe('Artists Integration Tests', () => {
 
   afterAll(async () => {
     await prismaService.$transaction([
+      prismaService.song.deleteMany(),
+      prismaService.lyrics.deleteMany(),
       prismaService.artist.deleteMany(),
       prismaService.user.deleteMany(),
     ]);

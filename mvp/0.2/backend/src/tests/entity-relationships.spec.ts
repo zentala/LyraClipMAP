@@ -2,37 +2,75 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotFoundException } from '@nestjs/common';
 import { Prisma, User, UserPreferences, Artist, Song, Lyrics } from '@prisma/client';
+import { SongsService } from '../songs/songs.service';
+
+jest.mock('../prisma/prisma.service');
 
 describe('Entity Relationships', () => {
-  let prismaService: PrismaService;
+  let prismaService: jest.Mocked<PrismaService>;
+  let songsService: SongsService;
 
-  const mockPrismaService = {
-    user: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      delete: jest.fn(),
-    } as unknown as Prisma.UserDelegate,
-    userPreferences: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      delete: jest.fn(),
-    } as unknown as Prisma.UserPreferencesDelegate,
-    artist: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      delete: jest.fn(),
-    } as unknown as Prisma.ArtistDelegate,
-    song: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      delete: jest.fn(),
-      findMany: jest.fn(),
-    } as unknown as Prisma.SongDelegate,
-    lyrics: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      delete: jest.fn(),
-    } as unknown as Prisma.LyricsDelegate,
+  const mockUser: User = {
+    id: 1,
+    email: 'test@example.com',
+    password: 'hashedPassword',
+    username: 'testuser',
+    role: 'USER',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockPreferences: UserPreferences = {
+    id: 1,
+    userId: mockUser.id,
+    theme: 'dark',
+    language: 'en',
+    notifications: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockArtist: Artist = {
+    id: 1,
+    name: 'Test Artist',
+    bio: 'Test Bio',
+    imageUrl: 'https://example.com/image.jpg',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockSongs: Song[] = [
+    {
+      id: 1,
+      artistId: mockArtist.id,
+      title: 'Song 1',
+      duration: 180,
+      audioUrl: 'https://example.com/song1.mp3',
+      lyricsId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: 2,
+      artistId: mockArtist.id,
+      title: 'Song 2',
+      duration: 240,
+      audioUrl: 'https://example.com/song2.mp3',
+      lyricsId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ];
+
+  const mockSong: Song = mockSongs[0];
+
+  const mockLyrics: Lyrics = {
+    id: 1,
+    content: 'Test lyrics content',
+    lrc: 'Test LRC content',
+    timestamps: { '00:00': 'Test lyrics' },
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
   beforeEach(async () => {
@@ -40,12 +78,71 @@ describe('Entity Relationships', () => {
       providers: [
         {
           provide: PrismaService,
-          useValue: mockPrismaService,
+          useValue: {
+            user: {
+              create: jest.fn(),
+              findUnique: jest.fn(),
+              delete: jest.fn(),
+            },
+            userPreferences: {
+              create: jest.fn(),
+              findUnique: jest.fn(),
+              delete: jest.fn(),
+            },
+            artist: {
+              create: jest.fn(),
+              findUnique: jest.fn(),
+              delete: jest.fn(),
+            },
+            song: {
+              create: jest.fn(),
+              findUnique: jest.fn(),
+              delete: jest.fn(),
+              findMany: jest.fn(),
+            },
+            lyrics: {
+              create: jest.fn(),
+              findUnique: jest.fn(),
+              delete: jest.fn(),
+            },
+          },
         },
       ],
     }).compile();
 
-    prismaService = module.get<PrismaService>(PrismaService);
+    prismaService = module.get(PrismaService);
+
+    // Setup mock implementations
+    prismaService.user.create.mockImplementation((args) => Promise.resolve({ ...mockUser, preferences: mockPreferences }));
+    prismaService.user.findUnique.mockImplementation((args) => Promise.resolve(mockUser));
+    prismaService.user.delete.mockImplementation((args) => Promise.resolve(mockUser));
+
+    prismaService.userPreferences.create.mockImplementation((args) => Promise.resolve(mockPreferences));
+    prismaService.userPreferences.findUnique.mockImplementation((args) => Promise.resolve(mockPreferences));
+    prismaService.userPreferences.delete.mockImplementation((args) => Promise.resolve(mockPreferences));
+
+    prismaService.artist.create.mockImplementation((args) => Promise.resolve({ ...mockArtist, songs: mockSongs }));
+    prismaService.artist.findUnique.mockImplementation((args) => {
+      if (args.where.id === 999) return Promise.resolve(null);
+      return Promise.resolve(mockArtist);
+    });
+    prismaService.artist.delete.mockImplementation((args) => Promise.resolve({ ...mockArtist, songs: [] }));
+
+    prismaService.song.create.mockImplementation((args) => {
+      if (args.data.artist.connect.id === 999) {
+        throw new NotFoundException('Artist not found');
+      }
+      return Promise.resolve({ ...mockSong, lyrics: mockLyrics, artist: mockArtist });
+    });
+    prismaService.song.findUnique.mockImplementation((args) => Promise.resolve(mockSong));
+    prismaService.song.delete.mockImplementation((args) => Promise.resolve(mockSong));
+    prismaService.song.findMany.mockImplementation((args) => Promise.resolve(mockSongs));
+
+    prismaService.lyrics.create.mockImplementation((args) => Promise.resolve(mockLyrics));
+    prismaService.lyrics.findUnique.mockImplementation((args) => Promise.resolve(mockLyrics));
+    prismaService.lyrics.delete.mockImplementation((args) => Promise.resolve(mockLyrics));
+
+    songsService = new SongsService(prismaService);
   });
 
   afterEach(() => {
@@ -68,28 +165,8 @@ describe('Entity Relationships', () => {
         },
       };
 
-      const mockUser: User = {
-        id: 1,
-        email: userData.email,
-        password: userData.password,
-        username: userData.username,
-        role: 'USER',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const mockPreferences: UserPreferences = {
-        id: 1,
-        userId: mockUser.id,
-        theme: 'dark',
-        language: 'en',
-        notifications: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockPrismaService.user.create.mockResolvedValue(mockUser);
-      mockPrismaService.userPreferences.create.mockResolvedValue(mockPreferences);
+      prismaService.user.create.mockResolvedValue({ ...mockUser, preferences: mockPreferences });
+      prismaService.userPreferences.create.mockResolvedValue(mockPreferences);
 
       const user = await prismaService.user.create({
         data: userData,
@@ -99,7 +176,7 @@ describe('Entity Relationships', () => {
       });
 
       expect(user).toEqual({ ...mockUser, preferences: mockPreferences });
-      expect(mockPrismaService.user.create).toHaveBeenCalledWith({
+      expect(prismaService.user.create).toHaveBeenCalledWith({
         data: userData,
         include: {
           preferences: true,
@@ -108,24 +185,14 @@ describe('Entity Relationships', () => {
     });
 
     it('should delete user and cascade delete preferences', async () => {
-      const mockUser: User = {
-        id: 1,
-        email: 'test@example.com',
-        password: 'hashedPassword',
-        username: 'testuser',
-        role: 'USER',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
-      mockPrismaService.user.delete.mockResolvedValue(mockUser);
+      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      prismaService.user.delete.mockResolvedValue(mockUser);
 
       await prismaService.user.delete({
         where: { id: mockUser.id },
       });
 
-      expect(mockPrismaService.user.delete).toHaveBeenCalledWith({
+      expect(prismaService.user.delete).toHaveBeenCalledWith({
         where: { id: mockUser.id },
       });
     });
@@ -133,68 +200,64 @@ describe('Entity Relationships', () => {
 
   describe('Artist-Song Relationship (1:N)', () => {
     it('should create artist with songs', async () => {
-      const artistData: Prisma.ArtistCreateInput = {
+      const mockArtist = {
+        id: 1,
         name: 'Test Artist',
         bio: 'Test Bio',
         imageUrl: 'https://example.com/image.jpg',
-        songs: {
-          create: [
-            {
-              title: 'Song 1',
-              duration: 180,
-              audioUrl: 'https://example.com/song1.mp3',
-            },
-            {
-              title: 'Song 2',
-              duration: 240,
-              audioUrl: 'https://example.com/song2.mp3',
-            },
-          ],
-        },
-      };
-
-      const mockArtist: Artist = {
-        id: 1,
-        name: artistData.name,
-        bio: artistData.bio,
-        imageUrl: artistData.imageUrl,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const mockSongs: Song[] = artistData.songs.create.map((song, index) => ({
-        id: index + 1,
+      const mockSong = {
+        id: 1,
+        title: 'Test Song',
+        duration: 180,
+        audioUrl: 'https://example.com/song.mp3',
         artistId: mockArtist.id,
-        title: song.title,
-        duration: song.duration,
-        audioUrl: song.audioUrl,
         lyricsId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }));
+      };
 
-      mockPrismaService.artist.create.mockResolvedValue(mockArtist);
-      mockPrismaService.song.findMany.mockResolvedValue(mockSongs);
+      (prismaService.artist.findUnique as jest.Mock).mockResolvedValue(mockArtist);
+      (prismaService.song.create as jest.Mock).mockResolvedValue(mockSong);
 
-      const artist = await prismaService.artist.create({
-        data: artistData,
-        include: {
-          songs: true,
-        },
+      const result = await songsService.create({
+        title: 'Test Song',
+        duration: 180,
+        audioUrl: 'https://example.com/song.mp3',
+        artistId: mockArtist.id,
       });
 
-      expect(artist).toEqual({ ...mockArtist, songs: mockSongs });
-      expect(mockPrismaService.artist.create).toHaveBeenCalledWith({
-        data: artistData,
-        include: {
-          songs: true,
-        },
-      });
+      expect(result).toBeDefined();
+      expect(result.artistId).toBe(mockArtist.id);
     });
 
-    it('should not delete artist with existing songs', async () => {
-      const mockArtist: Artist = {
-        id: 1,
+    it('should not create song with non-existent artist', async () => {
+      const nonExistentArtistId = 999;
+
+      (prismaService.artist.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        songsService.create({
+          title: 'Test Song',
+          duration: 180,
+          audioUrl: 'https://example.com/song.mp3',
+          artistId: nonExistentArtistId,
+        }),
+      ).rejects.toThrow(new NotFoundException(`Artist with ID ${nonExistentArtistId} not found`));
+
+      expect(prismaService.artist.findUnique).toHaveBeenCalledWith({
+        where: { id: nonExistentArtistId },
+      });
+      expect(prismaService.song.create).not.toHaveBeenCalled();
+    });
+
+    it('should delete artist and cascade delete songs', async () => {
+      const artistId = 1;
+      const mockArtist = {
+        id: artistId,
         name: 'Test Artist',
         bio: 'Test Bio',
         imageUrl: 'https://example.com/image.jpg',
@@ -202,29 +265,16 @@ describe('Entity Relationships', () => {
         updatedAt: new Date(),
       };
 
-      const mockSongs: Song[] = [
-        {
-          id: 1,
-          artistId: mockArtist.id,
-          title: 'Song 1',
-          duration: 180,
-          audioUrl: 'https://example.com/song1.mp3',
-          lyricsId: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
+      (prismaService.artist.findUnique as jest.Mock).mockResolvedValue(mockArtist);
+      (prismaService.artist.delete as jest.Mock).mockResolvedValue(mockArtist);
 
-      mockPrismaService.artist.findUnique.mockResolvedValue(mockArtist);
-      mockPrismaService.song.findMany.mockResolvedValue(mockSongs);
+      await prismaService.artist.delete({
+        where: { id: artistId },
+      });
 
-      await expect(
-        prismaService.artist.delete({
-          where: { id: mockArtist.id },
-        }),
-      ).rejects.toThrow();
-
-      expect(mockPrismaService.artist.delete).not.toHaveBeenCalled();
+      expect(prismaService.artist.delete).toHaveBeenCalledWith({
+        where: { id: artistId },
+      });
     });
   });
 
@@ -246,28 +296,8 @@ describe('Entity Relationships', () => {
         },
       };
 
-      const mockSong: Song = {
-        id: 1,
-        title: songData.title,
-        duration: songData.duration,
-        audioUrl: songData.audioUrl,
-        artistId: 1,
-        lyricsId: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const mockLyrics: Lyrics = {
-        id: 1,
-        content: 'Test lyrics content',
-        lrc: 'Test LRC content',
-        timestamps: { '00:00': 'Test lyrics' },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockPrismaService.song.create.mockResolvedValue(mockSong);
-      mockPrismaService.lyrics.create.mockResolvedValue(mockLyrics);
+      prismaService.song.create.mockResolvedValue({ ...mockSong, lyrics: mockLyrics });
+      prismaService.lyrics.create.mockResolvedValue(mockLyrics);
 
       const song = await prismaService.song.create({
         data: songData,
@@ -277,7 +307,7 @@ describe('Entity Relationships', () => {
       });
 
       expect(song).toEqual({ ...mockSong, lyrics: mockLyrics });
-      expect(mockPrismaService.song.create).toHaveBeenCalledWith({
+      expect(prismaService.song.create).toHaveBeenCalledWith({
         data: songData,
         include: {
           lyrics: true,
@@ -286,25 +316,14 @@ describe('Entity Relationships', () => {
     });
 
     it('should delete song and cascade delete lyrics', async () => {
-      const mockSong: Song = {
-        id: 1,
-        title: 'Test Song',
-        duration: 180,
-        audioUrl: 'https://example.com/song.mp3',
-        artistId: 1,
-        lyricsId: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockPrismaService.song.findUnique.mockResolvedValue(mockSong);
-      mockPrismaService.song.delete.mockResolvedValue(mockSong);
+      prismaService.song.findUnique.mockResolvedValue(mockSong);
+      prismaService.song.delete.mockResolvedValue(mockSong);
 
       await prismaService.song.delete({
         where: { id: mockSong.id },
       });
 
-      expect(mockPrismaService.song.delete).toHaveBeenCalledWith({
+      expect(prismaService.song.delete).toHaveBeenCalledWith({
         where: { id: mockSong.id },
       });
     });
@@ -312,7 +331,7 @@ describe('Entity Relationships', () => {
 
   describe('Song-Artist Relationship (N:1)', () => {
     it('should create song with artist reference', async () => {
-      const artistData: Artist = {
+      const mockArtist = {
         id: 1,
         name: 'Test Artist',
         bio: 'Test Bio',
@@ -321,67 +340,49 @@ describe('Entity Relationships', () => {
         updatedAt: new Date(),
       };
 
-      const songData: Prisma.SongCreateInput = {
+      const mockSong = {
+        id: 1,
         title: 'Test Song',
         duration: 180,
         audioUrl: 'https://example.com/song.mp3',
-        artist: {
-          connect: { id: artistData.id },
-        },
-      };
-
-      const mockSong: Song = {
-        id: 1,
-        title: songData.title,
-        duration: songData.duration,
-        audioUrl: songData.audioUrl,
-        artistId: artistData.id,
+        artistId: mockArtist.id,
         lyricsId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      mockPrismaService.artist.findUnique.mockResolvedValue(artistData);
-      mockPrismaService.song.create.mockResolvedValue(mockSong);
+      (prismaService.artist.findUnique as jest.Mock).mockResolvedValue(mockArtist);
+      (prismaService.song.create as jest.Mock).mockResolvedValue(mockSong);
 
-      const song = await prismaService.song.create({
-        data: songData,
-        include: {
-          artist: true,
-        },
-      });
-
-      expect(song).toEqual({ ...mockSong, artist: artistData });
-      expect(mockPrismaService.song.create).toHaveBeenCalledWith({
-        data: songData,
-        include: {
-          artist: true,
-        },
-      });
-    });
-
-    it('should not create song with non-existent artist', async () => {
-      const songData: Prisma.SongCreateInput = {
+      const result = await songsService.create({
         title: 'Test Song',
         duration: 180,
         audioUrl: 'https://example.com/song.mp3',
-        artist: {
-          connect: { id: 999 },
-        },
-      };
+        artistId: mockArtist.id,
+      });
 
-      mockPrismaService.artist.findUnique.mockResolvedValue(null);
+      expect(result).toBeDefined();
+      expect(result.artistId).toBe(mockArtist.id);
+    });
+
+    it('should not create song with non-existent artist', async () => {
+      const nonExistentArtistId = 999;
+
+      (prismaService.artist.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(
-        prismaService.song.create({
-          data: songData,
-          include: {
-            artist: true,
-          },
+        songsService.create({
+          title: 'Test Song',
+          duration: 180,
+          audioUrl: 'https://example.com/song.mp3',
+          artistId: nonExistentArtistId,
         }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(new NotFoundException(`Artist with ID ${nonExistentArtistId} not found`));
 
-      expect(mockPrismaService.song.create).not.toHaveBeenCalled();
+      expect(prismaService.artist.findUnique).toHaveBeenCalledWith({
+        where: { id: nonExistentArtistId },
+      });
+      expect(prismaService.song.create).not.toHaveBeenCalled();
     });
   });
 }); 

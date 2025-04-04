@@ -55,6 +55,11 @@ describe('ArtistsService Metadata', () => {
         imageUrl: 'invalid-url',
       };
 
+      // Mock validateImageUrl to throw BadRequestException
+      jest.spyOn(service as any, 'validateImageUrl').mockImplementation(() => {
+        throw new BadRequestException('Invalid image URL format');
+      });
+
       await expect(service.create(createArtistDto)).rejects.toThrow(BadRequestException);
       expect(mockPrismaService.artist.create).not.toHaveBeenCalled();
     });

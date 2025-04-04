@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotFoundException } from '@nestjs/common';
 import { Prisma, Song, Lyrics, Artist } from '@prisma/client';
+import { SongsService } from '../songs/songs.service';
 
 describe('Media Flow', () => {
   let prismaService: PrismaService;
@@ -100,7 +101,6 @@ describe('Media Flow', () => {
         content: lyricsData.content,
         lrc: lyricsData.lrc,
         timestamps: lyricsData.timestamps as any,
-        songId: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -172,7 +172,6 @@ describe('Media Flow', () => {
         content: updateData.content as string,
         lrc: 'Test LRC content',
         timestamps: updateData.timestamps as any,
-        songId: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -195,6 +194,12 @@ describe('Media Flow', () => {
   });
 
   describe('Media Delete Flow', () => {
+    let songsService: SongsService;
+
+    beforeEach(() => {
+      songsService = new SongsService(prismaService);
+    });
+
     it('should delete song and cascade delete lyrics', async () => {
       const songId = 1;
       const mockSong: Song = {
@@ -211,25 +216,33 @@ describe('Media Flow', () => {
       (mockPrismaService.song.findUnique as jest.Mock).mockResolvedValue(mockSong);
       (mockPrismaService.song.delete as jest.Mock).mockResolvedValue(mockSong);
 
-      await prismaService.song.delete({
-        where: { id: songId },
-      });
+      await songsService.remove(songId);
 
       expect(mockPrismaService.song.delete).toHaveBeenCalledWith({
         where: { id: songId },
+        include: {
+          artist: true,
+          lyrics: true,
+        },
       });
     });
 
     it('should handle non-existent song deletion', async () => {
       const songId = 999;
+
       (mockPrismaService.song.findUnique as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        prismaService.song.delete({
-          where: { id: songId },
-        }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(songsService.remove(songId)).rejects.toThrow(
+        new NotFoundException(`Song with ID ${songId} not found`)
+      );
 
+      expect(mockPrismaService.song.findUnique).toHaveBeenCalledWith({
+        where: { id: songId },
+        include: {
+          artist: true,
+          lyrics: true,
+        },
+      });
       expect(mockPrismaService.song.delete).not.toHaveBeenCalled();
     });
   });
