@@ -237,14 +237,19 @@ def material_add_song():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             try:
                 youtube_url = request.json.get('youtube_url')
+                print(f"Received AJAX request for YouTube URL: {youtube_url}")
+                
                 if not youtube_url:
+                    print("Error: No URL provided in request")
                     return {"error": "No URL provided"}, 400
                 
                 # Extract info from YouTube
+                print(f"Extracting info from URL: {youtube_url}")
                 video_info = extract_youtube_info(youtube_url)
+                print(f"Extracted video info: {video_info}")
                 
                 # Return the info as JSON
-                return {
+                response_data = {
                     "success": True,
                     "video_id": video_info.get('video_id'),
                     "title": video_info.get('title'),
@@ -252,10 +257,20 @@ def material_add_song():
                     "artist": video_info.get('artist'),
                     "thumbnail": video_info.get('thumbnail'),
                     "channel_name": video_info.get('channel_name'),
-                    "description": video_info.get('description')
+                    "description": video_info.get('description', '')[:100] + '...' if video_info.get('description') else ''
                 }
+                
+                print(f"Returning response: {response_data}")
+                return response_data
+                
             except Exception as e:
-                return {"error": str(e)}, 400
+                import traceback
+                print(f"Error processing YouTube URL: {str(e)}")
+                print(traceback.format_exc())
+                return {
+                    "error": str(e),
+                    "traceback": traceback.format_exc()
+                }, 400
         else:
             # Process normal form submission - use the regular add_song route
             return add_song()

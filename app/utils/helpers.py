@@ -16,11 +16,24 @@ def extract_youtube_info(url: str) -> Dict[str, str]:
     if parsed_url.hostname in ('www.youtube.com', 'youtube.com'):
         if parsed_url.path == '/watch':
             query = parse_qs(parsed_url.query)
-            video_id = query['v'][0]
+            if 'v' in query:
+                video_id = query['v'][0]
+                # Remove any additional parameters if present
+                if '&' in video_id:
+                    video_id = video_id.split('&')[0]
         elif parsed_url.path.startswith(('/embed/', '/v/')):
             video_id = parsed_url.path.split('/')[2]
+            # Remove any additional parameters if present
+            if '?' in video_id:
+                video_id = video_id.split('?')[0]
     elif parsed_url.hostname == 'youtu.be':
         video_id = parsed_url.path[1:]
+        # Remove any additional parameters if present
+        if '?' in video_id:
+            video_id = video_id.split('?')[0]
+    
+    # Debug output
+    print(f"URL: {url}, Parsed video_id: {video_id}")
     
     if not video_id:
         raise ValueError("Invalid YouTube URL")

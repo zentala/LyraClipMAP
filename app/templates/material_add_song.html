@@ -176,6 +176,38 @@
         
         let fetchTimeout = null;
         
+        // Function to clean YouTube URL of extra parameters
+        function cleanYoutubeUrl(url) {
+            try {
+                // Parse URL
+                const urlObj = new URL(url);
+                
+                // Get video ID
+                let videoId = null;
+                
+                if (urlObj.hostname.includes('youtube.com')) {
+                    videoId = urlObj.searchParams.get('v');
+                } else if (urlObj.hostname.includes('youtu.be')) {
+                    videoId = urlObj.pathname.substring(1);
+                }
+                
+                // Clean URL if we found a video ID
+                if (videoId) {
+                    if (urlObj.hostname.includes('youtube.com')) {
+                        return `https://www.youtube.com/watch?v=${videoId}`;
+                    } else if (urlObj.hostname.includes('youtu.be')) {
+                        return `https://youtu.be/${videoId}`;
+                    }
+                }
+                
+                // If we couldn't clean it, return the original
+                return url;
+            } catch (e) {
+                console.error("Error cleaning URL:", e);
+                return url;
+            }
+        }
+        
         // Handle URL input changes
         urlInput.addEventListener('input', function() {
             // Clear any existing timeout
@@ -185,9 +217,23 @@
             
             // Only fetch after user stops typing for 500ms
             fetchTimeout = setTimeout(function() {
-                const youtubeUrl = urlInput.value.trim();
+                let youtubeUrl = urlInput.value.trim();
                 
-                if (youtubeUrl && (youtubeUrl.includes('youtube.com/watch?v=') || youtubeUrl.includes('youtu.be/'))) {
+                // Clean the URL
+                if (youtubeUrl && (youtubeUrl.includes('youtube.com') || youtubeUrl.includes('youtu.be'))) {
+                    const cleanedUrl = cleanYoutubeUrl(youtubeUrl);
+                    
+                    // Log and update URL if it was cleaned
+                    if (cleanedUrl !== youtubeUrl) {
+                        console.log(`Cleaned URL: ${youtubeUrl} -> ${cleanedUrl}`);
+                        youtubeUrl = cleanedUrl;
+                        
+                        // Optionally update the input field with cleaned URL
+                        // urlInput.value = cleanedUrl;
+                    }
+                    
+                    // Debug
+                    console.log("Using URL for fetch:", youtubeUrl);
                     // Show loading state
                     urlPreview.classList.add('active');
                     previewTitle.textContent = "Loading...";
@@ -206,8 +252,15 @@
                             youtube_url: youtubeUrl
                         })
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        // Debug response
+                        console.log("Response status:", response.status);
+                        return response.json();
+                    })
                     .then(data => {
+                        // Debug data
+                        console.log("API Response data:", data);
+                        
                         if (data.error) {
                             throw new Error(data.error);
                         }
@@ -215,6 +268,30 @@
                         // Update preview
                         previewTitle.textContent = data.title || "Unknown Title";
                         previewChannel.textContent = data.channel_name || "Unknown Channel";
+                        
+                        // Create a debug info div
+                        let debugInfo = document.createElement('div');
+                        debugInfo.style.fontSize = '12px';
+                        debugInfo.style.color = '#666';
+                        debugInfo.style.marginTop = '8px';
+                        debugInfo.innerHTML = `
+                            <strong>Debug Info:</strong><br>
+                            Video ID: ${data.video_id || 'N/A'}<br>
+                            Title: ${data.title || 'N/A'}<br>
+                            Channel: ${data.channel_name || 'N/A'}<br>
+                            Artist: ${data.artist || 'N/A'}<br>
+                            Song Title: ${data.song_title || 'N/A'}<br>
+                        `;
+                        
+                        // Remove any existing debug info
+                        const existingDebug = document.querySelector('.debug-info');
+                        if (existingDebug) {
+                            existingDebug.remove();
+                        }
+                        
+                        // Add debug info to preview
+                        debugInfo.classList.add('debug-info');
+                        urlPreview.appendChild(debugInfo);
                         
                         if (data.thumbnail) {
                             previewThumbnail.style.backgroundImage = `url(${data.thumbnail})`;
@@ -242,6 +319,27 @@
                         console.error('Error fetching video info:', error);
                         previewTitle.textContent = "Could not load video info";
                         previewChannel.textContent = "Please check the URL";
+                        
+                        // Create error debug info
+                        let debugInfo = document.createElement('div');
+                        debugInfo.style.fontSize = '12px';
+                        debugInfo.style.color = 'red';
+                        debugInfo.style.marginTop = '8px';
+                        debugInfo.innerHTML = `
+                            <strong>Error:</strong> ${error.message || 'Unknown error'}<br>
+                            URL: ${youtubeUrl}<br>
+                            Try removing playlist parameters and query strings from the URL.
+                        `;
+                        
+                        // Remove any existing debug info
+                        const existingDebug = document.querySelector('.debug-info');
+                        if (existingDebug) {
+                            existingDebug.remove();
+                        }
+                        
+                        // Add debug info to preview
+                        debugInfo.classList.add('debug-info');
+                        urlPreview.appendChild(debugInfo);
                     });
                 } else {
                     // Hide preview for invalid URL
