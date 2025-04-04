@@ -60,17 +60,24 @@ def add_song():
         artist = request.form.get('artist')
         lyrics = request.form.get('lyrics')
         
-        # Extract YouTube info
+        # Extract YouTube info with enhanced data
         yt_info = extract_youtube_info(youtube_url)
         video_id = yt_info['video_id']
         
-        # If title/artist not provided, try to extract from YouTube title
-        if not (title and artist):
-            # Here you would normally get the YouTube video title
-            # For now, we'll use placeholder logic
-            if not title or not artist:
-                artist = artist or "Unknown Artist"
-                title = title or "Unknown Title"
+        # If title/artist not provided, try to use extracted info from YouTube
+        if not title and 'song_title' in yt_info:
+            title = yt_info['song_title']
+        elif not title and 'title' in yt_info:
+            title = yt_info['title']
+            
+        if not artist and 'artist' in yt_info:
+            artist = yt_info['artist']
+        elif not artist and 'channel_name' in yt_info:
+            artist = yt_info['channel_name']
+        
+        # Default values if we still don't have title/artist
+        title = title or "Unknown Title"
+        artist = artist or "Unknown Artist"
         
         # Create the song
         song = Song(title=title, artist=artist)
@@ -220,7 +227,35 @@ def material_view_song(song_id):
     
     return render_template('material_song_detail.html', song=song, youtube_embed=youtube_embed)
 
-@app.route('/material/add', methods=['GET'])
+@app.route('/material/add', methods=['GET', 'POST'])
 def material_add_song():
     """Add new song page with Material Design UI"""
-    return render_template('material_add_song.html')
+    if request.method == 'GET':
+        return render_template('material_add_song.html')
+    elif request.method == 'POST':
+        # This is for AJAX preview requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            try:
+                youtube_url = request.json.get('youtube_url')
+                if not youtube_url:
+                    return {"error": "No URL provided"}, 400
+                
+                # Extract info from YouTube
+                video_info = extract_youtube_info(youtube_url)
+                
+                # Return the info as JSON
+                return {
+                    "success": True,
+                    "video_id": video_info.get('video_id'),
+                    "title": video_info.get('title'),
+                    "song_title": video_info.get('song_title'),
+                    "artist": video_info.get('artist'),
+                    "thumbnail": video_info.get('thumbnail'),
+                    "channel_name": video_info.get('channel_name'),
+                    "description": video_info.get('description')
+                }
+            except Exception as e:
+                return {"error": str(e)}, 400
+        else:
+            # Process normal form submission - use the regular add_song route
+            return add_song()

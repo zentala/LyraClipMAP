@@ -167,32 +167,87 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const urlInput = document.getElementById('youtube_url');
+        const titleInput = document.getElementById('title');
+        const artistInput = document.getElementById('artist');
         const urlPreview = document.getElementById('url-preview');
         const previewTitle = document.getElementById('preview-title');
         const previewChannel = document.getElementById('preview-channel');
         const previewThumbnail = document.getElementById('preview-thumbnail');
         
-        // For demo purposes - simulated preview
-        urlInput.addEventListener('blur', function() {
-            if (urlInput.value && urlInput.value.includes('youtube.com/watch?v=')) {
-                // Extract video ID
-                const videoId = urlInput.value.split('v=')[1].split('&')[0];
-                
-                // Set thumbnail background
-                previewThumbnail.style.backgroundImage = `url(https://i.ytimg.com/vi/${videoId}/mqdefault.jpg)`;
-                previewThumbnail.style.backgroundSize = 'cover';
-                previewThumbnail.style.backgroundPosition = 'center';
-                
-                // Show preview
-                urlPreview.classList.add('active');
-                
-                // In a real implementation, you would fetch video data from an API
-                // This is just a simulation
-                previewTitle.textContent = "Example Song Title";
-                previewChannel.textContent = "Example Artist Channel";
-            } else {
-                urlPreview.classList.remove('active');
+        let fetchTimeout = null;
+        
+        // Handle URL input changes
+        urlInput.addEventListener('input', function() {
+            // Clear any existing timeout
+            if (fetchTimeout) {
+                clearTimeout(fetchTimeout);
             }
+            
+            // Only fetch after user stops typing for 500ms
+            fetchTimeout = setTimeout(function() {
+                const youtubeUrl = urlInput.value.trim();
+                
+                if (youtubeUrl && (youtubeUrl.includes('youtube.com/watch?v=') || youtubeUrl.includes('youtu.be/'))) {
+                    // Show loading state
+                    urlPreview.classList.add('active');
+                    previewTitle.textContent = "Loading...";
+                    previewChannel.textContent = "";
+                    previewThumbnail.style.backgroundColor = "#f0f0f0";
+                    previewThumbnail.style.backgroundImage = "none";
+                    
+                    // Fetch video info via AJAX
+                    fetch('/material/add', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            youtube_url: youtubeUrl
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+                        
+                        // Update preview
+                        previewTitle.textContent = data.title || "Unknown Title";
+                        previewChannel.textContent = data.channel_name || "Unknown Channel";
+                        
+                        if (data.thumbnail) {
+                            previewThumbnail.style.backgroundImage = `url(${data.thumbnail})`;
+                            previewThumbnail.style.backgroundSize = 'cover';
+                            previewThumbnail.style.backgroundPosition = 'center';
+                        }
+                        
+                        // Auto-fill form fields if they're empty
+                        if (!titleInput.value && data.song_title) {
+                            titleInput.value = data.song_title;
+                        } else if (!titleInput.value && data.title) {
+                            titleInput.value = data.title;
+                        }
+                        
+                        if (!artistInput.value && data.artist) {
+                            artistInput.value = data.artist;
+                        } else if (!artistInput.value && data.channel_name) {
+                            artistInput.value = data.channel_name;
+                        }
+                        
+                        // Show preview
+                        urlPreview.classList.add('active');
+                    })
+                    .catch(error => {
+                        console.error('Error fetching video info:', error);
+                        previewTitle.textContent = "Could not load video info";
+                        previewChannel.textContent = "Please check the URL";
+                    });
+                } else {
+                    // Hide preview for invalid URL
+                    urlPreview.classList.remove('active');
+                }
+            }, 500);
         });
     });
 </script>
