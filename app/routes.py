@@ -5,6 +5,7 @@ from app.models.models import Song, TextContent, AudioSource
 from app.utils.helpers import (
     extract_youtube_info,
     get_youtube_embed_html,
+    search_for_lyrics,
     search_tekstowo,
     format_song_title,
     format_youtube_title
@@ -82,9 +83,9 @@ def add_song():
         # Create the song
         song = Song(title=title, artist=artist)
         
-        # Add lyrics - try to fetch from tekstowo.pl if not provided
+        # Add lyrics - try to fetch from multiple sources if not provided
         if not lyrics:
-            lyrics = search_tekstowo(artist, title)
+            lyrics = search_for_lyrics(artist, title)
         
         if lyrics:
             lyrics_content = TextContent(
@@ -130,7 +131,10 @@ def edit_song(song_id):
                 youtube_url = source.url
                 break
                 
-        return render_template('edit_song.html', song=song, lyrics=lyrics, youtube_url=youtube_url)
+        # Show fetch lyrics button if no lyrics available
+        show_fetch_lyrics = not lyrics
+                
+        return render_template('edit_song.html', song=song, lyrics=lyrics, youtube_url=youtube_url, show_fetch_lyrics=show_fetch_lyrics)
     
     try:
         # Update song data
@@ -183,12 +187,76 @@ def edit_song(song_id):
                 # Invalid YouTube URL - ignore this update
                 pass
         
+        # Check if this is a fetch lyrics request
+        if 'fetch_lyrics' in request.form and request.form.get('fetch_lyrics') == '1':
+            # Try to fetch lyrics
+            lyrics = search_for_lyrics(song.artist, song.title)
+            
+            if lyrics:
+                # Check if lyrics already exist
+                lyrics_exists = False
+                for text in song.text_contents:
+                    if text.content_type == "lyrics":
+                        text.content = lyrics
+                        lyrics_exists = True
+                        break
+                
+                # If no lyrics exist, create new
+                if not lyrics_exists:
+                    lyrics_content = TextContent(
+                        content=lyrics,
+                        content_type="lyrics",
+                        language="unknown"
+                    )
+                    song.text_contents.append(lyrics_content)
+                
+                # Save changes
+                db.session.commit()
+                
+                # Return user to edit page with success message
+                return redirect(url_for('edit_song', song_id=song.id) + '?lyrics_fetched=1')
+            else:
+                # Return user to edit page with error message
+                return redirect(url_for('edit_song', song_id=song.id) + '?lyrics_error=1')
+        
         # Save changes
         db.session.commit()
         return redirect(url_for('view_song', song_id=song.id))
         
     except Exception as e:
         return str(e), 400
+        
+@app.route('/api/fetch_lyrics', methods=['POST'])
+def fetch_lyrics_api():
+    """API endpoint to fetch lyrics"""
+    try:
+        artist = request.json.get('artist')
+        title = request.json.get('title')
+        
+        if not artist or not title:
+            return {"error": "Artist and title are required"}, 400
+            
+        print(f"Fetching lyrics for: {artist} - {title}")
+        lyrics = search_for_lyrics(artist, title)
+        
+        if lyrics:
+            return {
+                "success": True,
+                "lyrics": lyrics
+            }
+        else:
+            return {
+                "success": False,
+                "error": "No lyrics found"
+            }, 404
+    except Exception as e:
+        import traceback
+        print(f"Error fetching lyrics: {str(e)}")
+        print(traceback.format_exc())
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }, 400
 
 @app.route('/delete/<int:song_id>', methods=['POST'])
 def delete_song(song_id):

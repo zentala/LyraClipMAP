@@ -137,6 +137,14 @@
                 <label class="form-label" for="title">Song Title</label>
                 <input type="text" class="form-input" id="title" name="title" placeholder="Will be auto-detected if possible">
                 <p class="form-helper">Optional - will try to detect from YouTube</p>
+                
+                <div id="artist-suggestions" style="margin-top: 8px; display: none;">
+                    <p style="font-size: 12px; color: #6200ee; cursor: pointer; display: none;" id="search-artists-btn">
+                        <i class="material-icons" style="font-size: 14px; vertical-align: middle;">search</i>
+                        Search for better artist information
+                    </p>
+                    <div id="artist-results" style="margin-top: 4px;"></div>
+                </div>
             </div>
             
             <div class="form-group">
@@ -147,9 +155,16 @@
             
             <div class="form-group">
                 <label class="form-label" for="lyrics">Lyrics</label>
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <button type="button" id="fetch-lyrics-btn" class="md-button md-button--secondary" style="margin-right: 8px; display: none;">
+                        <span class="material-icons">search</span>
+                        Fetch Lyrics
+                    </button>
+                    <div id="lyrics-status" style="font-size: 12px;"></div>
+                </div>
                 <textarea class="form-input form-textarea" id="lyrics" name="lyrics" 
-                          placeholder="Will try to find automatically from tekstowo.pl"></textarea>
-                <p class="form-helper">Optional - we'll try to find lyrics automatically</p>
+                          placeholder="Will try to find automatically from multiple sources"></textarea>
+                <p class="form-helper">Optional - we'll search tekstowo.pl, Genius, and Musixmatch for lyrics</p>
             </div>
             
             <div class="form-submit">
@@ -173,8 +188,75 @@
         const previewTitle = document.getElementById('preview-title');
         const previewChannel = document.getElementById('preview-channel');
         const previewThumbnail = document.getElementById('preview-thumbnail');
+        const fetchLyricsBtn = document.getElementById('fetch-lyrics-btn');
+        const lyricsTextarea = document.getElementById('lyrics');
+        const lyricsStatus = document.getElementById('lyrics-status');
         
         let fetchTimeout = null;
+        
+        // Function to fetch lyrics
+        function fetchLyrics() {
+            // Get artist and title
+            const artist = artistInput.value.trim();
+            const title = titleInput.value.trim();
+            
+            if (!artist || !title) {
+                lyricsStatus.textContent = "Please provide both artist and title to fetch lyrics";
+                lyricsStatus.style.color = "red";
+                return;
+            }
+            
+            // Show loading state
+            lyricsStatus.textContent = "Searching for lyrics...";
+            lyricsStatus.style.color = "#6200ee";
+            
+            // Fetch lyrics from API
+            fetch('/api/fetch_lyrics', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    artist: artist,
+                    title: title
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.lyrics) {
+                    // Update textarea
+                    lyricsTextarea.value = data.lyrics;
+                    lyricsStatus.textContent = "Lyrics found and added!";
+                    lyricsStatus.style.color = "green";
+                } else {
+                    lyricsStatus.textContent = data.error || "No lyrics found. Try adjusting artist or title.";
+                    lyricsStatus.style.color = "red";
+                }
+            })
+            .catch(error => {
+                lyricsStatus.textContent = "Error fetching lyrics. Please try again.";
+                lyricsStatus.style.color = "red";
+                console.error('Error fetching lyrics:', error);
+            });
+        }
+        
+        // Add event listener to fetch lyrics button
+        if (fetchLyricsBtn) {
+            fetchLyricsBtn.addEventListener('click', fetchLyrics);
+        }
+        
+        // Function to check if we should show the fetch lyrics button
+        function checkShowFetchLyricsButton() {
+            if (artistInput.value.trim() && titleInput.value.trim()) {
+                fetchLyricsBtn.style.display = 'flex';
+            } else {
+                fetchLyricsBtn.style.display = 'none';
+            }
+        }
+        
+        // Add event listeners to artist and title inputs
+        artistInput.addEventListener('input', checkShowFetchLyricsButton);
+        titleInput.addEventListener('input', checkShowFetchLyricsButton);
         
         // Function to clean YouTube URL of extra parameters
         function cleanYoutubeUrl(url) {
@@ -314,6 +396,11 @@
                         
                         // Show preview
                         urlPreview.classList.add('active');
+                        
+                        // Show fetch lyrics button if we have both artist and title
+                        if (artistInput.value && titleInput.value) {
+                            fetchLyricsBtn.style.display = 'flex';
+                        }
                     })
                     .catch(error => {
                         console.error('Error fetching video info:', error);

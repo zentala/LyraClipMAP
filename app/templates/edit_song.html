@@ -124,6 +124,16 @@
                 
                 <div class="form-group">
                     <label for="lyrics">Lyrics</label>
+                    <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                        <button type="submit" name="fetch_lyrics" value="1" class="btn" style="margin-left: 1rem; background-color: #4CAF50;" onclick="return confirm('This will search for lyrics online. Any existing lyrics will be replaced. Continue?')">
+                            Search for Lyrics Online
+                        </button>
+                        {% if request.args.get('lyrics_fetched') %}
+                        <span style="color: green; margin-left: 1rem;">Lyrics fetched successfully!</span>
+                        {% elif request.args.get('lyrics_error') %}
+                        <span style="color: red; margin-left: 1rem;">No lyrics found. Please add them manually.</span>
+                        {% endif %}
+                    </div>
                     <textarea id="lyrics" name="lyrics">{{ lyrics }}</textarea>
                 </div>
                 
