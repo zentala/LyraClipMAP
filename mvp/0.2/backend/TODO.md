@@ -18,9 +18,9 @@
    [x] Verify token refresh mechanism
 
 2. **Users Module Tests**
-   [ ] Implement tests for UserService CRUD operations
-   [ ] Test user preferences logic
-   [ ] Validate user-specific permission checks
+   [x] Implement tests for UserService CRUD operations
+   [x] Test user preferences logic
+   [x] Validate user-specific permission checks
 
 3. **Lyrics Module Tests**
    [x] Test lyrics search functionality
@@ -33,7 +33,7 @@
    [x] Test content type validation
 
 5. **Artists Module Tests**
-   [ ] Test CRUD operations for artists
+   [x] Test CRUD operations for artists
    [ ] Implement tests for artist-song relationships
    [ ] Test artist metadata handling
 
@@ -87,7 +87,7 @@
    [x] Test authorization on protected routes
 
 2. **Artists and Songs API**
-   [ ] Test complete CRUD for artists and songs
+   [x] Test complete CRUD for artists and songs
    [ ] Verify relationships between entities
    [ ] Test media association flows
 
