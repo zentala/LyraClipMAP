@@ -1,10 +1,10 @@
 # Rules
 
-[ ] never change rules. section. never. ever.
-[ ] manitain TODO.md as tasks lists `[ ]` or `[x]` and track here progress
-[ ] makr task as done, commit, take next task fromtak the list
+* never change rules. section. never. ever.
+* mark task as done, commit, take next task fromtak the list
+* in every point / task
 
-...end_of_rues_section.
+...end_of_rues_section. you can edit from here:
 
 
 # Backend Implementation TODO List
