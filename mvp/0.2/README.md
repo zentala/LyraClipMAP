@@ -1,6 +1,75 @@
 # LyraClipMAP
 
-> **Your music map – with lyrics, emotion, and control.**
+## Wersja: 0.2.0
+
+LyraClipMAP to aplikacja do synchronizacji tekstu z muzyką, która pozwala na tworzenie i zarządzanie wizualizacjami tekstu zintegrowanymi z utworami muzycznymi.
+
+## Główne funkcje
+
+- 🎵 Import utworów ze Spotify
+- 📝 Konwersja tekstu do formatu LRC
+- 🎨 Generowanie wizualizacji tekstu
+- 👥 System użytkowników i playlist
+- 🎯 Precyzyjna synchronizacja tekstu z muzyką
+
+## Dokumentacja
+
+Dokumentacja projektu została podzielona na trzy główne sekcje:
+
+### 1. Dokumentacja ogólna (`/docs`)
+- [Przegląd dokumentacji](docs/README.md)
+- [Architektura systemu](docs/architecture/overview.md)
+- [Przepływ danych](docs/architecture/data-flow.md)
+- [Konfiguracja środowiska](docs/development/setup.md)
+
+### 2. Dokumentacja backendu (`/backend/docs`)
+- [TODO i plan rozwoju](backend/docs/TODO.md)
+- [Dokumentacja API](backend/docs/api/api-documentation.md)
+- [Szczegóły techniczne](backend/docs/technical/technical-details.md)
+- [Struktura danych](backend/docs/data/data-structure.md)
+
+### 3. Dokumentacja frontendu (`/frontend/docs`)
+- [Interfejs użytkownika](frontend/docs/ui/ui.xml)
+- [Doświadczenie użytkownika](frontend/docs/ux/ux.xml)
+- [Style i wygląd](frontend/docs/ui/style.md)
+- [Walidacja formularzy](frontend/docs/ux/form-validation.md)
+
+## Szybki start
+
+1. Sklonuj repozytorium
+2. Zainstaluj zależności:
+   ```bash
+   pnpm install
+   ```
+3. Skonfiguruj środowisko:
+   ```bash
+   cp .env.example .env
+   # Edytuj .env z odpowiednimi wartościami
+   ```
+4. Uruchom aplikację:
+   ```bash
+   # Backend
+   cd backend
+   pnpm start:dev
+
+   # Frontend
+   cd frontend
+   pnpm dev
+   ```
+
+Szczegółowe instrukcje znajdziesz w [dokumentacji](docs/development/setup.md).
+
+## Status projektu
+
+Aktualny status projektu i plan rozwoju znajdziesz w [VERSION.md](docs/VERSION.md).
+
+## Licencja
+
+MIT
+
+## Kontakt
+
+W przypadku pytań lub sugestii, prosimy o kontakt z zespołem deweloperskim.
 
 ## 📦 Overview
 **LyraClipMAP** is an intelligent app for working with music and lyrics. It allows you to:
@@ -212,31 +281,3 @@ pnpm prisma:migrate    # Run migrations
 ```bash
 pnpm prisma:studio
 ```
-
-## Dokumentacja
-
-Dokumentacja projektu została podzielona na trzy główne sekcje:
-
-### 1. Dokumentacja ogólna (`/docs`)
-- [Architektura systemu](docs/ARCHITECTURE.md)
-- [Struktura projektu](docs/PROJECT_STRUCTURE.md)
-- [Standardy i konwencje](docs/CONSISTENCY.md)
-- [Język i komunikacja](docs/LANG.md)
-- [Jak to działa](docs/HOW_IT_WORKS.md)
-- [Wizualizacja audio](docs/AUDIO_VISUALIZATION.md)
-- [Badania nad wizualizacją audio](docs/AUDIO_VISUALIZATION_RESEARCH.md)
-- [Konwersja tekstu do LRC](docs/TEXT_TO_LRC.md)
-- [Feedback i uwagi](docs/FEEDBACK.md)
-
-### 2. Dokumentacja backendu (`/backend/docs`)
-- [TODO i plan rozwoju](backend/docs/TODO.md)
-- [Dokumentacja API](backend/docs/API_DOCUMENTATION.md)
-- [Szczegóły techniczne](backend/docs/TECHNICAL_DETAILS.md)
-- [Struktura danych](backend/docs/DATA_STRUCTURE.md)
-
-### 3. Dokumentacja frontendu (`/frontend/docs`)
-- [Interfejs użytkownika](frontend/docs/UI.xml)
-- [Doświadczenie użytkownika](frontend/docs/UX.xml)
-- [Style i wygląd](frontend/docs/STYLE.md)
-- [Walidacja formularzy](frontend/docs/FORM_VALIDATION.md)
-- [Prezentacja dla klienta](frontend/docs/KLIENT_PREZENTACJA.md)
