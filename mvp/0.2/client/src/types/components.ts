@@ -293,15 +293,16 @@ export interface SongListEmits {
  * Props dla komponentu SongForm
  */
 export interface SongFormProps {
-  initialValues?: PropType<{
+  initialValues?: {
     title?: string;
     artist?: string;
     youtubeUrl?: string;
     lyrics?: string;
-  }>;
-  submitText?: PropType<string>;
-  showCancel?: PropType<boolean>;
-  loading?: PropType<boolean>;
+    description?: string;
+  };
+  submitText?: string;
+  showCancel?: boolean;
+  loading?: boolean;
 }
 
 /**
@@ -313,6 +314,7 @@ export interface SongFormEmits {
     artist: string;
     youtubeUrl: string;
     lyrics?: string;
+    description?: string;
   }): void;
   (e: 'cancel'): void;
   (e: 'youtube-preview', info: any): void;
