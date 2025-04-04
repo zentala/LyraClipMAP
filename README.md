@@ -35,36 +35,58 @@
 
 ### Prerequisites
 - Python 3.8+
-- Python venv package (for virtual environment)
+- pip (Python package manager)
 
-### Installation
-1. Clone the repository
+### Installation & Running
+
+**Method 1: Using Python directly**
 ```bash
+# 1. Clone the repository
 git clone https://github.com/zentala/LyraClipMAP.git
 cd LyraClipMAP
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Run the application
+PYTHONPATH=/path/to/LyraClipMAP python3 app/main.py
+
+# 4. Open your browser and navigate to http://localhost:8000
 ```
 
-2. Set up a virtual environment
+**Method 2: Using virtual environment (recommended)**
 ```bash
-# On Ubuntu/Debian, you may need to first install:
-# sudo apt install python3-venv
+# 1. Clone the repository
+git clone https://github.com/zentala/LyraClipMAP.git
+cd LyraClipMAP
 
-# Create and activate virtual environment
+# 2. Create and activate virtual environment
+# On Ubuntu/Debian, you may need to install: sudo apt install python3-venv
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
 
-3. Install dependencies
-```bash
+# 3. Install dependencies
 pip install -r requirements.txt
-```
 
-4. Run the application
-```bash
+# 4. Run the application
 python -m app.main
+
+# 5. Open your browser and navigate to http://localhost:8000
 ```
 
-5. Open your browser and navigate to `http://localhost:8000`
+## 🧰 Current Functionality
+
+- Add songs with YouTube URLs (e.g., https://www.youtube.com/watch?v=PR_eYLKPmko)
+- Auto-fetch lyrics from tekstowo.pl
+- Search through lyrics, song titles, and artists
+- View songs with embedded YouTube players
+
+## 📊 Database Structure
+
+- **Songs**: Titles and artists
+- **Text Content**: Lyrics, translations (with language tags)
+- **Audio Sources**: YouTube links (expandable to other sources)
+- **Word Timestamps**: For future word-level synchronization
 
 ## 🖼️ User Flow
 
@@ -89,6 +111,11 @@ python -m app.main
    - 📤 Export options
 
 ## 🌱 Future Development
+
+- Word-to-timestamp mapping using auto-transcription
+- Support for more lyrics sources
+- Better YouTube title parsing
+- Multiple audio source types
 - AI-powered tagging of emotion and lyrical themes
 - Community: shared clips and collaborative maps
 - Compare versions: covers, remixes, and live edits
