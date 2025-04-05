@@ -53,7 +53,7 @@ export class AuthService {
 
     // Wygeneruj token
     const token = this.jwtService.sign(
-      { sub: user.id, email: user.email },
+      { sub: user.id, email: user.email, role: user.role },
       { secret: this.configService.get('JWT_SECRET') },
     );
 
@@ -79,7 +79,7 @@ export class AuthService {
 
     // Wygeneruj token
     const token = this.jwtService.sign(
-      { sub: user.id, email: user.email },
+      { sub: user.id, email: user.email, role: user.role },
       { secret: this.configService.get('JWT_SECRET') },
     );
 
@@ -95,7 +95,7 @@ export class AuthService {
 
       // Wygeneruj nowy token
       const newToken = this.jwtService.sign(
-        { sub: payload.sub, email: payload.email },
+        { sub: payload.sub, email: payload.email, role: payload.role },
         { secret: this.configService.get('JWT_SECRET') },
       );
 
