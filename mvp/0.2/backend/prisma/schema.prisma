@@ -40,13 +40,14 @@ model TextContent {
 }
 
 model Lyrics {
-  id        Int      @id @default(autoincrement())
-  content   String
-  lrc       String?
+  id         Int       @id @default(autoincrement())
+  text       String    @db.Text
+  language   String?
+  sourceUrl  String?
   timestamps Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  song      Song?
+  songs      Song[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model Artist {
@@ -62,12 +63,14 @@ model Artist {
 model Song {
   id          Int      @id @default(autoincrement())
   title       String
+  artist      Artist   @relation(fields: [artistId], references: [id])
   artistId    Int
-  artist      Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  duration    Int?     // Duration in seconds
-  audioUrl    String?
-  lyricsId    Int?     @unique
-  lyrics      Lyrics?  @relation(fields: [lyricsId], references: [id], onDelete: SetNull)
+  duration    Int
+  audioUrl    String
+  lyrics      Lyrics?  @relation(fields: [lyricsId], references: [id])
+  lyricsId    Int?
+  genre       String?
+  releaseYear Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   playlists   PlaylistSong[]
