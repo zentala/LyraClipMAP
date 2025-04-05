@@ -27,5 +27,10 @@
   "workspaces": [
     "client",
     "server"
-  ]
+  ],
+  "dependencies": {
+    "@nestjs/axios": "^4.0.0",
+    "@types/bcryptjs": "^3.0.0",
+    "bcryptjs": "^3.0.2"
+  }
 }

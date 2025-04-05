@@ -224,10 +224,10 @@ if (!record) throw new NotFoundException();
    [x] Verify tag-song relationships
    [x] Test tag categories and filtering
 
-8. **Spotify Integration Tests**
-   [ ] Test Spotify API client with proper mocking
-   [ ] Verify track import functionality
-   [ ] Test audio features extraction
+8. **Spotify Integration Tests** [SKIP]
+   [ ] ~~Test Spotify API client with proper mocking~~
+   [ ] ~~Verify track import functionality~~
+   [ ] ~~Test audio features extraction~~
 
 ## Integration Tests (5-8 story points each)
 
@@ -243,16 +243,16 @@ if (!record) throw new NotFoundException();
 
 3. **Search Functionality**
    [x] Test search with filtering capabilities
-   [ ] Verify pagination works across resources
-   [ ] Test search relevance scoring
+   [x] Verify pagination works across resources
+   [x] Test search relevance scoring
 
 4. **Playlist Management**
    [x] Test playlist creation with initial songs
    [ ] Verify song addition/removal from playlists
    [ ] Test playlist sharing mechanisms
 
-5. **Data Import Flows**
-   [ ] Test Spotify import workflow
+5. **Data Import Flows** [SKIP]
+   [ ] ~~Test Spotify import workflow~~
    [ ] Verify lyrics fetching integration
    [ ] Test metadata enrichment process
 
@@ -318,3 +318,455 @@ if (!record) throw new NotFoundException();
    [x] Build request simulation utilities
 
 [x] Implement tests for media flowp
+
+## Error Fix Plan
+
+### 1. JWT Authorization Fixes
+- [ ] Fix JWT configuration in `./backend/src/songs/tests/songs.integration.spec.ts`:
+  - Add JwtModule configuration with test secret
+  - Ensure proper token generation in TestHelpers
+  - Add global JWT guard configuration
+
+### 2. Circular Dependencies
+- [ ] Fix circular dependencies in `./backend/src/playlists/tests/playlists.service.spec.ts`:
+  - Use forwardRef() for bidirectional relationships
+  - Review module dependencies
+  - Ensure proper module initialization order
+
+### 3. Prisma Foreign Key Constraints
+- [ ] Update cleanup order in `./backend/src/tests/test-helpers.ts`:
+```typescript
+async cleanupDatabase() {
+  await this.prisma.playlistSong.deleteMany();
+  await this.prisma.playlistShare.deleteMany();
+  await this.prisma.playlist.deleteMany();
+  await this.prisma.songTag.deleteMany();
+  await this.prisma.tag.deleteMany();
+  await this.prisma.song.deleteMany();
+  await this.prisma.lyrics.deleteMany();
+  await this.prisma.artist.deleteMany();
+  await this.prisma.userPreferences.deleteMany();
+  await this.prisma.user.deleteMany();
+}
+```
+
+### 4. Lyrics Type Validation
+- [ ] Fix LyricsCreateInput type in `./backend/prisma/schema.prisma`:
+  - Add 'text' field to Lyrics model
+  - Update all related interfaces and types
+  - Regenerate Prisma client
+
+### 5. Search Test Data
+- [ ] Update search tests in `./backend/src/search/tests/search.integration.spec.ts`:
+  - Add proper test data setup
+  - Ensure test data matches search criteria
+  - Add proper cleanup after tests
+
+### Implementation Order:
+1. Fix Prisma schema and regenerate client
+2. Update database cleanup order
+3. Fix JWT configuration
+4. Resolve circular dependencies
+5. Update search test data
+
+## Current Error Fix Plan (2024-03-XX)
+
+### 1. JWT Authorization Issues
+Files to check:
+- `backend/src/songs/tests/songs.integration.spec.ts`
+- `backend/src/auth/strategies/jwt.strategy.ts`
+- `backend/src/tests/test-helpers.ts`
+
+Tasks:
+1. Fix JWT module configuration in test setup:
+```typescript
+beforeAll(async () => {
+  process.env.NODE_ENV = 'test';
+  const moduleFixture: TestingModule = await Test.createTestingModule({
+    imports: [
+      AppModule,
+      JwtModule.registerAsync({
+        imports: [ConfigModule],
+        useFactory: async (configService: ConfigService) => ({
+          secret: configService.get('JWT_SECRET'),
+          signOptions: { expiresIn: '1d' },
+        }),
+        inject: [ConfigService],
+      }),
+      AuthModule,
+    ],
+  }).compile();
+  // ... rest of the setup
+}
+```
+
+2. Fix token generation in TestHelpers:
+```typescript
+generateToken(userId: number, role: UserRole) {
+  return this.jwtService.sign(
+    {
+      sub: userId,
+      role: role,
+      type: 'access_token'
+    },
+    {
+      secret: this.configService.get('JWT_SECRET'),
+      expiresIn: '1d'
+    }
+  );
+}
+```
+
+3. Verify JWT strategy configuration:
+```typescript
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(private configService: ConfigService) {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
+      secretOrKey: configService.get('JWT_SECRET'),
+    });
+  }
+}
+```
+
+### 2. Lyrics Model Type Issues
+Files to check:
+- `backend/prisma/schema.prisma`
+- `backend/src/songs/tests/songs.integration.spec.ts`
+- `backend/src/tests/test-helpers.ts`
+
+Tasks:
+1. Update Prisma schema to include text field:
+```prisma
+model Lyrics {
+  id         Int       @id @default(autoincrement())
+  content    String    @db.Text
+  language   String    // zmiana z String? na String
+  sourceUrl  String?
+  timestamps Json?
+  songs      Song[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+```
+
+2. Run Prisma generate to update types:
+```bash
+cd backend && pnpm prisma generate
+```
+
+3. Update all Lyrics creation calls to match schema:
+```typescript
+const data: Prisma.LyricsCreateInput = {
+  content: 'Test lyrics content',
+  language: 'en',
+  sourceUrl: 'https://example.com/lyrics',
+  timestamps: { '00:00': 'Test lyrics' },
+};
+```
+
+### Implementation Order:
+1. Fix Prisma schema and regenerate client first
+2. Update JWT configuration
+3. Run tests to verify fixes
+
+### Notes:
+- Each fix should include both implementation and test updates
+- Add detailed error logging for debugging
+- Consider adding transaction rollback in tests
+- Update API documentation after fixes
+
+# Test Fix Plan (2024-04-05)
+
+## 1. JWT Authorization Issues
+Files to check:
+- `./backend/src/songs/tests/songs.integration.spec.ts`
+- `./backend/src/auth/auth.module.ts`
+- `./backend/src/auth/strategies/jwt.strategy.ts`
+
+Tasks:
+1. Poprawić konfigurację modułu JWT w testach:
+```typescript
+imports: [
+  ConfigModule.forRoot({
+    isGlobal: true,
+    envFilePath: '.env.test',
+  }),
+  AuthModule,
+  AppModule,
+]
+```
+
+2. Upewnić się, że `AuthModule` eksportuje wszystkie potrzebne zależności:
+```typescript
+@Module({
+  exports: [AuthService, JwtModule, JwtStrategy],
+})
+```
+
+## 2. Prisma Schema Issues
+Files to check:
+- `./backend/prisma/schema.prisma`
+- `./backend/src/songs/tests/songs.integration.spec.ts`
+- `./backend/src/tests/test-helpers.ts`
+
+Tasks:
+1. Zaktualizować model Lyrics w schema.prisma:
+```prisma
+model Lyrics {
+  id         Int       @id @default(autoincrement())
+  content    String    @db.Text
+  language   String    // zmiana z String? na String
+  sourceUrl  String?
+  timestamps Json?
+  songs      Song[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+```
+
+2. Zaktualizować wszystkie miejsca tworzenia Lyrics w testach:
+```typescript
+// w songs.integration.spec.ts
+const lyrics = await prismaService.lyrics.create({
+  data: {
+    content: '[00:00.00]Test lyrics\n[00:05.00]Second line',
+    language: 'en',
+    sourceUrl: 'https://example.com/lyrics',
+    timestamps: { '00:00': 'Test lyrics', '00:05': 'Second line' }
+  }
+});
+
+// w test-helpers.ts
+async createTestLyrics(): Promise<Lyrics> {
+  return this.prisma.lyrics.create({
+    data: {
+      content: 'Test lyrics content',
+      language: 'en',
+      sourceUrl: 'https://example.com/lyrics',
+      timestamps: { '00:00': 'Test lyrics' }
+    }
+  });
+}
+```
+
+## Implementation Order:
+1. Najpierw zaktualizować schemat Prisma i wygenerować klienta
+2. Wykonać migrację bazy danych
+3. Zaktualizować kod testów
+4. Poprawić konfigurację JWT
+5. Uruchomić testy i zweryfikować poprawki
+
+## Polecenia do wykonania:
+```bash
+# 1. Wygenerować nowego klienta Prisma
+cd backend && pnpm prisma generate
+
+# 2. Wykonać migrację
+cd backend && pnpm prisma migrate dev --name update_lyrics_model
+
+# 3. Uruchomić testy
+cd backend && NODE_ENV=test pnpm test src/songs/tests/songs.integration.spec.ts
+```
+
+## Uwagi:
+- Upewnić się, że baza testowa jest w czystym stanie przed uruchomieniem testów
+- Dodać szczegółowe logowanie dla debugowania
+- Rozważyć dodanie wycofywania transakcji w testach
+- Zaktualizować dokumentację API po wprowadzeniu zmian
+
+# Backend Tasks
+
+## High Priority: Fix Tests & TypeScript Issues
+
+### 1. JWT Authorization Test Fixes
+**Problem**: Integration tests failing due to JWT authorization issues (401 Unauthorized)
+**Files affected**: 
+- `src/songs/tests/songs.integration.spec.ts`
+- `src/auth/guards/jwt-auth.guard.ts`
+- `src/auth/strategies/jwt.strategy.ts`
+
+**Implementation steps**:
+1. Add test helpers:
+```typescript
+// src/tests/auth-test.helper.ts
+export const setupTestAuth = async (app: INestApplication) => {
+  const authService = app.get(AuthService);
+  const user = await createTestUser(app);
+  const token = await authService.generateAccessToken(user);
+  return { user, token };
+};
+
+export const withAuth = (request: any, token: string) => {
+  return request.set('Authorization', `Bearer ${token}`);
+};
+```
+
+2. Update JWT configuration:
+```typescript
+// In test setup
+JwtModule.registerAsync({
+  imports: [ConfigModule],
+  useFactory: async (configService: ConfigService) => ({
+    secret: configService.get('JWT_SECRET'),
+    signOptions: { expiresIn: '1d' }
+  }),
+  inject: [ConfigService],
+})
+```
+
+### 2. TypeScript Type Fixes
+**Problem**: Multiple TypeScript errors in models and tests
+**Files affected**: Multiple test and service files
+
+**Implementation steps**:
+1. Create type definitions:
+```typescript
+// src/types/prisma-extensions.ts
+export interface SongExtended extends Prisma.SongCreateInput {
+  genre: string;
+  releaseYear: number;
+}
+
+export interface LyricsExtended extends Prisma.LyricsCreateInput {
+  language: string;
+  sourceUrl: string;
+}
+```
+
+2. Add test data factories:
+```typescript
+// src/tests/test-utils.ts
+export const createTestSong = (): SongExtended => ({
+  title: 'Test Song',
+  artistId: 1,
+  duration: 180,
+  audioUrl: 'https://example.com/song.mp3',
+  genre: 'pop',
+  releaseYear: 2024,
+  lyricsId: 1
+});
+```
+
+3. Update Prisma schema:
+```prisma
+// prisma/schema.prisma
+model Song {
+  // existing fields...
+  genre       String
+  releaseYear Int
+}
+
+model Lyrics {
+  // existing fields...
+  language   String
+  sourceUrl  String
+}
+```
+
+### 3. Database Test Helpers
+**Problem**: Inconsistent database cleanup and setup in tests
+**Files affected**: All test files
+
+**Implementation steps**:
+1. Create DB helper:
+```typescript
+// src/tests/db-test.helper.ts
+export class DbTestHelper {
+  constructor(private prisma: PrismaService) {}
+
+  async cleanupDatabase() {
+    // Cleanup in correct order
+    const tables = [
+      'PlaylistSong',
+      'PlaylistShare',
+      'Playlist',
+      'SongTag',
+      'Tag',
+      'Song',
+      'Lyrics',
+      'Artist',
+      'UserPreferences',
+      'User'
+    ];
+    
+    for (const table of tables) {
+      await this.prisma[table.toLowerCase()].deleteMany();
+    }
+  }
+}
+```
+
+2. Add to test setup:
+```typescript
+// In test files
+describe('Test Suite', () => {
+  let dbHelper: DbTestHelper;
+
+  beforeAll(async () => {
+    dbHelper = new DbTestHelper(prisma);
+  });
+
+  afterEach(async () => {
+    await dbHelper.cleanupDatabase();
+  });
+});
+```
+
+### 4. Prisma Mock Helpers
+**Problem**: Inconsistent mocking of Prisma methods in tests
+**Files affected**: All test files using Prisma mocks
+
+**Implementation steps**:
+1. Create mock helper:
+```typescript
+// src/tests/prisma-mock.helper.ts
+export const mockPrismaMethod = (
+  model: any,
+  method: string,
+  returnValue: any
+) => {
+  model[method].mockResolvedValue(returnValue);
+};
+
+// Usage example:
+mockPrismaMethod(prismaService.song, 'create', {
+  id: 1,
+  title: 'Test Song',
+  genre: 'pop',
+  releaseYear: 2024
+});
+```
+
+### 5. Automated Fixes Script
+**Problem**: Manual fixes needed for property names and types
+**Files affected**: Multiple files
+
+**Implementation steps**:
+1. Create fix script:
+```bash
+#!/bin/bash
+# scripts/fix-property-names.sh
+
+# Fix property names
+find ./src -type f -name "*.ts" -exec sed -i 's/lrc:/timestamps:/g' {} +
+find ./src -type f -name "*.ts" -exec sed -i 's/include: { song:/include: { songs:/g' {} +
+
+# Add missing properties
+find ./src -type f -name "*.ts" -exec sed -i 's/{ title: string, artistId: number }/{ title: string, artistId: number, genre: string, releaseYear: number }/g' {} +
+```
+
+### Implementation Order
+1. Create and test helpers first
+2. Run Prisma migrations
+3. Update test configurations
+4. Apply automated fixes
+5. Verify and fix remaining issues
+
+### Success Criteria
+- All TypeScript errors resolved
+- Tests passing with proper JWT auth
+- Consistent test data structure
+- Clean database state between tests
