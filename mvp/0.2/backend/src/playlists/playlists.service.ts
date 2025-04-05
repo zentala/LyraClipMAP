@@ -1,46 +1,82 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { CreatePlaylistDto } from './dto/create-playlist.dto';
+import { Playlist, PlaylistPermission } from '@prisma/client';
 
 @Injectable()
-export class PlaylistService {
-  constructor(private prisma: PrismaService) {}
+export class PlaylistsService {
+  constructor(private readonly prisma: PrismaService) {}
 
-  async create(
-    userId: number,
-    createPlaylistDto: Prisma.PlaylistCreateInput,
-  ) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException(`User with ID ${userId} not found`);
-    }
-
+  async create(userId: number, createPlaylistDto: CreatePlaylistDto) {
     return this.prisma.playlist.create({
       data: {
         ...createPlaylistDto,
         userId,
       },
+      include: {
+        songs: {
+          include: {
+            song: true
+          }
+        }
+      }
     });
   }
 
-  async findAll(userId: number) {
+  async findAllByUserId(userId: number) {
     return this.prisma.playlist.findMany({
-      where: { userId },
-      include: { songs: true },
+      where: {
+        userId,
+      },
+      include: {
+        songs: {
+          include: {
+            song: true
+          }
+        }
+      }
+    });
+  }
+
+  async findPublicByUserId(userId: number) {
+    return this.prisma.playlist.findMany({
+      where: {
+        userId,
+        isPublic: true,
+      },
+      include: {
+        songs: {
+          include: {
+            song: true
+          }
+        }
+      }
     });
   }
 
   async findOne(id: number, userId: number) {
     const playlist = await this.prisma.playlist.findUnique({
-      where: { id, userId },
-      include: { songs: true },
+      where: { id },
+      include: {
+        songs: {
+          include: {
+            song: true
+          }
+        },
+        user: true,
+        shares: true
+      }
     });
 
     if (!playlist) {
       throw new NotFoundException(`Playlist with ID ${id} not found`);
+    }
+
+    if (!playlist.isPublic && playlist.userId !== userId) {
+      const hasAccess = playlist.shares.some(share => share.userId === userId);
+      if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this playlist');
+      }
     }
 
     return playlist;
@@ -106,34 +142,112 @@ export class PlaylistService {
   }
 
   async removeSong(playlistId: number, userId: number, songId: number) {
+    const playlist = await this.findOne(playlistId, userId);
+
+    if (playlist.userId !== userId) {
+      const hasEditAccess = playlist.shares.some(
+        share => share.userId === userId && share.permission === PlaylistPermission.EDIT
+      );
+
+      if (!hasEditAccess) {
+        throw new ForbiddenException('You do not have permission to edit this playlist');
+      }
+    }
+
+    await this.prisma.playlistSong.deleteMany({
+      where: {
+        playlistId,
+        songId,
+      }
+    });
+
+    // Reorder remaining songs
+    const remainingSongs = await this.prisma.playlistSong.findMany({
+      where: { playlistId },
+      orderBy: { order: 'asc' }
+    });
+
+    for (let i = 0; i < remainingSongs.length; i++) {
+      await this.prisma.playlistSong.update({
+        where: { id: remainingSongs[i].id },
+        data: { order: i + 1 }
+      });
+    }
+  }
+
+  async addSongs(playlistId: number, userId: number, songIds: number[]) {
+    const playlist = await this.findOne(playlistId, userId);
+
+    if (playlist.userId !== userId) {
+      const hasEditAccess = playlist.shares.some(
+        share => share.userId === userId && share.permission === PlaylistPermission.EDIT
+      );
+
+      if (!hasEditAccess) {
+        throw new ForbiddenException('You do not have permission to edit this playlist');
+      }
+    }
+
+    const currentOrder = await this.prisma.playlistSong.count({
+      where: { playlistId }
+    });
+
+    const songsToAdd = songIds.map((songId, index) => ({
+      playlistId,
+      songId,
+      order: currentOrder + index + 1
+    }));
+
+    await this.prisma.playlistSong.createMany({
+      data: songsToAdd
+    });
+
+    return this.findOne(playlistId, userId);
+  }
+
+  async share(playlistId: number, ownerId: number, targetUserId: number, permission: PlaylistPermission) {
     const playlist = await this.prisma.playlist.findUnique({
-      where: { id: playlistId, userId },
+      where: { id: playlistId }
     });
 
     if (!playlist) {
       throw new NotFoundException(`Playlist with ID ${playlistId} not found`);
     }
 
-    const playlistSong = await this.prisma.playlistSong.findMany({
-      where: {
-        playlistId,
-        songId,
-      },
-    });
-
-    if (playlistSong.length === 0) {
-      throw new NotFoundException(
-        `Song with ID ${songId} not found in playlist ${playlistId}`,
-      );
+    if (playlist.userId !== ownerId) {
+      throw new ForbiddenException('You do not have permission to share this playlist');
     }
 
-    return this.prisma.playlistSong.delete({
+    // Check if user exists
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId }
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException(`User with ID ${targetUserId} not found`);
+    }
+
+    // Check if share already exists
+    const existingShare = await this.prisma.playlistShare.findFirst({
       where: {
-        playlistId_songId: {
-          playlistId,
-          songId,
-        },
-      },
+        playlistId,
+        userId: targetUserId
+      }
+    });
+
+    if (existingShare) {
+      return this.prisma.playlistShare.update({
+        where: { id: existingShare.id },
+        data: { permission }
+      });
+    }
+
+    return this.prisma.playlistShare.create({
+      data: {
+        playlistId,
+        userId: targetUserId,
+        permission
+      }
     });
   }
 } 

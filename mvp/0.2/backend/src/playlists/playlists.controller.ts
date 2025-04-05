@@ -8,29 +8,50 @@ import {
   Delete,
   UseGuards,
   Request,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
-import { PlaylistService } from './playlists.service';
+import { PlaylistsService } from './playlists.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Prisma } from '@prisma/client';
+import { CreatePlaylistDto } from './dto/create-playlist.dto';
+import { AddSongsDto } from './dto/add-songs.dto';
+import { SharePlaylistDto } from './dto/share-playlist.dto';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('playlists')
 @Controller('playlists')
 @UseGuards(JwtAuthGuard)
-export class PlaylistController {
-  constructor(private readonly playlistService: PlaylistService) {}
+@ApiBearerAuth()
+export class PlaylistsController {
+  constructor(private readonly playlistsService: PlaylistsService) {}
 
   @Post()
-  create(@Request() req, @Body() createPlaylistDto: Prisma.PlaylistCreateInput) {
-    return this.playlistService.create(req.user.id, createPlaylistDto);
+  @ApiOperation({ summary: 'Create a new playlist' })
+  @ApiResponse({ status: 201, description: 'The playlist has been successfully created.' })
+  async create(@Request() req, @Body() createPlaylistDto: CreatePlaylistDto) {
+    return this.playlistsService.create(req.user.id, createPlaylistDto);
   }
 
-  @Get()
-  findAll(@Request() req) {
-    return this.playlistService.findAll(req.user.id);
+  @Get('my')
+  @ApiOperation({ summary: 'Get all playlists for the current user' })
+  @ApiResponse({ status: 200, description: 'Return all playlists for the current user.' })
+  async findMyPlaylists(@Request() req) {
+    return this.playlistsService.findAllByUserId(req.user.id);
+  }
+
+  @Get('user/:userId')
+  @ApiOperation({ summary: 'Get public playlists for a specific user' })
+  @ApiResponse({ status: 200, description: 'Return public playlists for the specified user.' })
+  async findUserPlaylists(@Param('userId') userId: string) {
+    return this.playlistsService.findPublicByUserId(parseInt(userId));
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() req) {
-    return this.playlistService.findOne(+id, req.user.id);
+  @ApiOperation({ summary: 'Get a specific playlist' })
+  @ApiResponse({ status: 200, description: 'Return the playlist.' })
+  async findOne(@Request() req, @Param('id') id: string) {
+    return this.playlistsService.findOne(parseInt(id), req.user.id);
   }
 
   @Patch(':id')
@@ -39,30 +60,50 @@ export class PlaylistController {
     @Request() req,
     @Body() updatePlaylistDto: Prisma.PlaylistUpdateInput,
   ) {
-    return this.playlistService.update(+id, req.user.id, updatePlaylistDto);
+    return this.playlistsService.update(+id, req.user.id, updatePlaylistDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
-    return this.playlistService.remove(+id, req.user.id);
+    return this.playlistsService.remove(+id, req.user.id);
   }
 
-  @Post(':id/songs/:songId')
-  addSong(
-    @Param('id') id: string,
-    @Param('songId') songId: string,
+  @Post(':id/songs')
+  @ApiOperation({ summary: 'Add songs to a playlist' })
+  @ApiResponse({ status: 200, description: 'The songs have been successfully added to the playlist.' })
+  async addSongs(
     @Request() req,
-    @Body('order') order: number,
+    @Param('id') id: string,
+    @Body() addSongsDto: AddSongsDto,
   ) {
-    return this.playlistService.addSong(+id, req.user.id, +songId, order);
+    return this.playlistsService.addSongs(parseInt(id), req.user.id, addSongsDto.songIds);
   }
 
   @Delete(':id/songs/:songId')
-  removeSong(
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a song from a playlist' })
+  @ApiResponse({ status: 204, description: 'The song has been successfully removed from the playlist.' })
+  async removeSong(
+    @Request() req,
     @Param('id') id: string,
     @Param('songId') songId: string,
-    @Request() req,
   ) {
-    return this.playlistService.removeSong(+id, req.user.id, +songId);
+    await this.playlistsService.removeSong(parseInt(id), req.user.id, parseInt(songId));
+  }
+
+  @Post(':id/share')
+  @ApiOperation({ summary: 'Share a playlist with another user' })
+  @ApiResponse({ status: 200, description: 'The playlist has been successfully shared.' })
+  async share(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() sharePlaylistDto: SharePlaylistDto,
+  ) {
+    return this.playlistsService.share(
+      parseInt(id),
+      req.user.id,
+      sharePlaylistDto.userId,
+      sharePlaylistDto.permission,
+    );
   }
 } 

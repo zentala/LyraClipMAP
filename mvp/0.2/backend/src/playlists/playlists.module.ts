@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { PlaylistService } from './playlists.service';
-import { PlaylistController } from './playlists.controller';
+import { PlaylistsController } from './playlists.controller';
+import { PlaylistsService } from './playlists.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [PlaylistController],
-  providers: [PlaylistService],
-  exports: [PlaylistService],
+  controllers: [PlaylistsController],
+  providers: [PlaylistsService],
+  exports: [PlaylistsService],
 })
 export class PlaylistsModule {} 

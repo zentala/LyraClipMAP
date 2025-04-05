@@ -1,11 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../../app.module';
 import { TestHelpers } from '../../tests/test-helpers';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { Artist, Lyrics } from '@prisma/client';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { AuthModule } from '../../auth/auth.module';
+import { PassportModule } from '@nestjs/passport';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { SongsModule } from '../songs.module';
 
 describe('SongsController (e2e)', () => {
   let app: INestApplication;
@@ -17,18 +23,67 @@ describe('SongsController (e2e)', () => {
   let lyrics: Lyrics;
 
   beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.JWT_SECRET = 'test-secret-key-for-jwt-tokens';
+    
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          envFilePath: '.env.test',
+          load: [() => ({
+            JWT_SECRET: process.env.JWT_SECRET,
+          })],
+        }),
+        PassportModule.register({ 
+          defaultStrategy: 'jwt',
+        }),
+        JwtModule.registerAsync({
+          imports: [ConfigModule],
+          useFactory: async (configService: ConfigService) => {
+            const secret = configService.get('JWT_SECRET');
+            console.log('JwtModule secret:', secret);
+            return {
+              secret,
+              signOptions: { 
+                expiresIn: '1d',
+                algorithm: 'HS256'
+              },
+            };
+          },
+          inject: [ConfigService],
+        }),
+        AuthModule,
+        PrismaModule,
+        SongsModule,
+      ],
+      providers: [
+        TestHelpers,
+      ],
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
     const jwtService = moduleFixture.get<JwtService>(JwtService);
-    testHelpers = new TestHelpers(prismaService, jwtService);
+    const configService = moduleFixture.get<ConfigService>(ConfigService);
+    testHelpers = new TestHelpers(prismaService, jwtService, configService);
     testData = await testHelpers.setupTestData();
     adminToken = testData.adminToken;
+
+    console.log('JWT Secret from config:', configService.get('JWT_SECRET'));
+    console.log('Admin token:', adminToken);
+    const decodedToken = jwtService.decode(adminToken);
+    console.log('Decoded token:', decodedToken);
+
+    try {
+      const verifiedToken = jwtService.verify(adminToken);
+      console.log('Token verification successful:', verifiedToken);
+    } catch (error) {
+      console.error('Token verification failed:', error.message);
+    }
 
     // Create test artist
     artist = await prismaService.artist.create({
@@ -42,8 +97,9 @@ describe('SongsController (e2e)', () => {
     lyrics = await prismaService.lyrics.create({
       data: {
         content: '[00:00.00]Test lyrics\n[00:05.00]Second line',
-        lrc: '[00:00.00]Test lyrics\n[00:05.00]Second line',
-        timestamps: {}
+        language: 'en',
+        sourceUrl: 'https://example.com/lyrics',
+        timestamps: { '00:00': 'Test lyrics', '00:05': 'Second line' }
       }
     });
   });
@@ -260,8 +316,9 @@ describe('SongsController (e2e)', () => {
       const newLyrics = await prismaService.lyrics.create({
         data: {
           content: 'Unique lyrics for first test',
-          lrc: '[00:00.00]Unique lyrics for first test',
-          timestamps: { '00:00': 'Unique lyrics for first test' },
+          language: 'en',
+          sourceUrl: 'https://example.com/lyrics',
+          timestamps: { '00:00': 'Unique lyrics for first test' }
         }
       });
       
@@ -339,8 +396,9 @@ describe('SongsController (e2e)', () => {
       const newLyrics = await prismaService.lyrics.create({
         data: {
           content: 'Unique lyrics for attachment test',
-          lrc: '[00:00.00]Unique lyrics for attachment test',
-          timestamps: { '00:00': 'Unique lyrics for attachment test' },
+          language: 'en',
+          sourceUrl: 'https://example.com/lyrics',
+          timestamps: { '00:00': 'Unique lyrics for attachment test' }
         }
       });
 
