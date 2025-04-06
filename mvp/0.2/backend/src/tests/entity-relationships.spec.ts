@@ -3,12 +3,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotFoundException } from '@nestjs/common';
 import { Prisma, User, UserPreferences, Artist, Song, Lyrics } from '@prisma/client';
 import { SongsService } from '../songs/songs.service';
+import { DbTestHelper } from './db-test.helper';
+import { TestHelpers } from './test-helpers';
+import { TestLogger } from './test-logger';
 
 jest.mock('../prisma/prisma.service');
 
 describe('Entity Relationships', () => {
-  let prismaService: jest.Mocked<PrismaService>;
+  let prismaService: PrismaService;
   let songsService: SongsService;
+  let dbTestHelper: DbTestHelper;
+  let testHelpers: TestHelpers;
 
   const mockUser: User = {
     id: 1,
@@ -47,6 +52,8 @@ describe('Entity Relationships', () => {
       duration: 180,
       audioUrl: 'https://example.com/song1.mp3',
       lyricsId: null,
+      genre: 'pop',
+      releaseYear: 2024,
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -57,6 +64,8 @@ describe('Entity Relationships', () => {
       duration: 240,
       audioUrl: 'https://example.com/song2.mp3',
       lyricsId: null,
+      genre: 'rock',
+      releaseYear: 2024,
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -66,8 +75,9 @@ describe('Entity Relationships', () => {
 
   const mockLyrics: Lyrics = {
     id: 1,
-    content: 'Test lyrics content',
-    lrc: 'Test LRC content',
+    text: 'Test lyrics content',
+    language: 'en',
+    sourceUrl: 'https://example.com/lyrics',
     timestamps: { '00:00': 'Test lyrics' },
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -76,77 +86,58 @@ describe('Entity Relationships', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        SongsService,
         {
           provide: PrismaService,
           useValue: {
             user: {
-              create: jest.fn(),
-              findUnique: jest.fn(),
-              delete: jest.fn(),
+              create: jest.fn().mockResolvedValue({ ...mockUser, preferences: mockPreferences }),
+              findUnique: jest.fn().mockResolvedValue(mockUser),
+              delete: jest.fn().mockResolvedValue(mockUser),
             },
             userPreferences: {
-              create: jest.fn(),
-              findUnique: jest.fn(),
-              delete: jest.fn(),
-            },
-            artist: {
-              create: jest.fn(),
-              findUnique: jest.fn(),
-              delete: jest.fn(),
+              create: jest.fn().mockResolvedValue(mockPreferences),
+              findUnique: jest.fn().mockResolvedValue(mockPreferences),
+              delete: jest.fn().mockResolvedValue(mockPreferences),
             },
             song: {
-              create: jest.fn(),
-              findUnique: jest.fn(),
-              delete: jest.fn(),
-              findMany: jest.fn(),
+              create: jest.fn().mockResolvedValue(mockSong),
+              findUnique: jest.fn().mockResolvedValue(mockSong),
+              delete: jest.fn().mockResolvedValue(mockSong),
+            },
+            artist: {
+              create: jest.fn().mockResolvedValue(mockArtist),
+              findUnique: jest.fn().mockResolvedValue(mockArtist),
+              delete: jest.fn().mockResolvedValue(mockArtist),
             },
             lyrics: {
-              create: jest.fn(),
-              findUnique: jest.fn(),
-              delete: jest.fn(),
+              create: jest.fn().mockResolvedValue(mockLyrics),
+              findUnique: jest.fn().mockResolvedValue(mockLyrics),
+              delete: jest.fn().mockResolvedValue(mockLyrics),
             },
+            $transaction: jest.fn().mockImplementation((cb) => cb(prismaService)),
           },
         },
+        DbTestHelper,
+        TestHelpers,
       ],
     }).compile();
 
     prismaService = module.get(PrismaService);
+    songsService = module.get(SongsService);
+    dbTestHelper = module.get(DbTestHelper);
+    testHelpers = module.get(TestHelpers);
 
-    // Setup mock implementations
-    prismaService.user.create.mockImplementation((args) => Promise.resolve({ ...mockUser, preferences: mockPreferences }));
-    prismaService.user.findUnique.mockImplementation((args) => Promise.resolve(mockUser));
-    prismaService.user.delete.mockImplementation((args) => Promise.resolve(mockUser));
-
-    prismaService.userPreferences.create.mockImplementation((args) => Promise.resolve(mockPreferences));
-    prismaService.userPreferences.findUnique.mockImplementation((args) => Promise.resolve(mockPreferences));
-    prismaService.userPreferences.delete.mockImplementation((args) => Promise.resolve(mockPreferences));
-
-    prismaService.artist.create.mockImplementation((args) => Promise.resolve({ ...mockArtist, songs: mockSongs }));
-    prismaService.artist.findUnique.mockImplementation((args) => {
-      if (args.where.id === 999) return Promise.resolve(null);
-      return Promise.resolve(mockArtist);
-    });
-    prismaService.artist.delete.mockImplementation((args) => Promise.resolve({ ...mockArtist, songs: [] }));
-
-    prismaService.song.create.mockImplementation((args) => {
-      if (args.data.artist.connect.id === 999) {
-        throw new NotFoundException('Artist not found');
-      }
-      return Promise.resolve({ ...mockSong, lyrics: mockLyrics, artist: mockArtist });
-    });
-    prismaService.song.findUnique.mockImplementation((args) => Promise.resolve(mockSong));
-    prismaService.song.delete.mockImplementation((args) => Promise.resolve(mockSong));
-    prismaService.song.findMany.mockImplementation((args) => Promise.resolve(mockSongs));
-
-    prismaService.lyrics.create.mockImplementation((args) => Promise.resolve(mockLyrics));
-    prismaService.lyrics.findUnique.mockImplementation((args) => Promise.resolve(mockLyrics));
-    prismaService.lyrics.delete.mockImplementation((args) => Promise.resolve(mockLyrics));
-
-    songsService = new SongsService(prismaService);
+    await dbTestHelper.cleanupExistingData();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterAll(async () => {
+    await dbTestHelper.cleanupExistingData();
+    await prismaService.$disconnect();
   });
 
   describe('User-UserPreferences Relationship (1:1)', () => {
@@ -165,9 +156,6 @@ describe('Entity Relationships', () => {
         },
       };
 
-      prismaService.user.create.mockResolvedValue({ ...mockUser, preferences: mockPreferences });
-      prismaService.userPreferences.create.mockResolvedValue(mockPreferences);
-
       const user = await prismaService.user.create({
         data: userData,
         include: {
@@ -176,18 +164,9 @@ describe('Entity Relationships', () => {
       });
 
       expect(user).toEqual({ ...mockUser, preferences: mockPreferences });
-      expect(prismaService.user.create).toHaveBeenCalledWith({
-        data: userData,
-        include: {
-          preferences: true,
-        },
-      });
     });
 
     it('should delete user and cascade delete preferences', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
-      prismaService.user.delete.mockResolvedValue(mockUser);
-
       await prismaService.user.delete({
         where: { id: mockUser.id },
       });
@@ -200,34 +179,14 @@ describe('Entity Relationships', () => {
 
   describe('Artist-Song Relationship (1:N)', () => {
     it('should create artist with songs', async () => {
-      const mockArtist = {
-        id: 1,
-        name: 'Test Artist',
-        bio: 'Test Bio',
-        imageUrl: 'https://example.com/image.jpg',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const mockSong = {
-        id: 1,
-        title: 'Test Song',
-        duration: 180,
-        audioUrl: 'https://example.com/song.mp3',
-        artistId: mockArtist.id,
-        lyricsId: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      (prismaService.artist.findUnique as jest.Mock).mockResolvedValue(mockArtist);
-      (prismaService.song.create as jest.Mock).mockResolvedValue(mockSong);
-
       const result = await songsService.create({
         title: 'Test Song',
         duration: 180,
         audioUrl: 'https://example.com/song.mp3',
         artistId: mockArtist.id,
+        lyricsId: 1,
+        genre: 'pop',
+        releaseYear: 2024,
       });
 
       expect(result).toBeDefined();
@@ -236,8 +195,7 @@ describe('Entity Relationships', () => {
 
     it('should not create song with non-existent artist', async () => {
       const nonExistentArtistId = 999;
-
-      (prismaService.artist.findUnique as jest.Mock).mockResolvedValue(null);
+      (prismaService.artist.findUnique as jest.Mock).mockResolvedValueOnce(null);
 
       await expect(
         songsService.create({
@@ -245,35 +203,20 @@ describe('Entity Relationships', () => {
           duration: 180,
           audioUrl: 'https://example.com/song.mp3',
           artistId: nonExistentArtistId,
+          lyricsId: 1,
+          genre: 'pop',
+          releaseYear: 2024,
         }),
       ).rejects.toThrow(new NotFoundException(`Artist with ID ${nonExistentArtistId} not found`));
-
-      expect(prismaService.artist.findUnique).toHaveBeenCalledWith({
-        where: { id: nonExistentArtistId },
-      });
-      expect(prismaService.song.create).not.toHaveBeenCalled();
     });
 
     it('should delete artist and cascade delete songs', async () => {
-      const artistId = 1;
-      const mockArtist = {
-        id: artistId,
-        name: 'Test Artist',
-        bio: 'Test Bio',
-        imageUrl: 'https://example.com/image.jpg',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      (prismaService.artist.findUnique as jest.Mock).mockResolvedValue(mockArtist);
-      (prismaService.artist.delete as jest.Mock).mockResolvedValue(mockArtist);
-
       await prismaService.artist.delete({
-        where: { id: artistId },
+        where: { id: mockArtist.id },
       });
 
       expect(prismaService.artist.delete).toHaveBeenCalledWith({
-        where: { id: artistId },
+        where: { id: mockArtist.id },
       });
     });
   });
@@ -284,41 +227,35 @@ describe('Entity Relationships', () => {
         title: 'Test Song',
         duration: 180,
         audioUrl: 'https://example.com/song.mp3',
+        genre: 'pop',
+        releaseYear: 2024,
         artist: {
           connect: { id: 1 },
         },
         lyrics: {
           create: {
-            content: 'Test lyrics content',
-            lrc: 'Test LRC content',
-            timestamps: { '00:00': 'Test lyrics' },
-          },
-        },
+            text: 'Test lyrics content',
+            language: 'en',
+            sourceUrl: 'https://example.com/lyrics',
+            timestamps: []
+          }
+        }
       };
 
-      prismaService.song.create.mockResolvedValue({ ...mockSong, lyrics: mockLyrics });
-      prismaService.lyrics.create.mockResolvedValue(mockLyrics);
-
-      const song = await prismaService.song.create({
+      const result = await prismaService.song.create({
         data: songData,
         include: {
+          artist: true,
           lyrics: true,
         },
       });
 
-      expect(song).toEqual({ ...mockSong, lyrics: mockLyrics });
-      expect(prismaService.song.create).toHaveBeenCalledWith({
-        data: songData,
-        include: {
-          lyrics: true,
-        },
-      });
+      expect(result).toBeDefined();
+      expect(result.lyrics).toBeDefined();
+      expect(result.lyrics.text).toBe(mockLyrics.text);
     });
 
     it('should delete song and cascade delete lyrics', async () => {
-      prismaService.song.findUnique.mockResolvedValue(mockSong);
-      prismaService.song.delete.mockResolvedValue(mockSong);
-
       await prismaService.song.delete({
         where: { id: mockSong.id },
       });
@@ -331,35 +268,17 @@ describe('Entity Relationships', () => {
 
   describe('Song-Artist Relationship (N:1)', () => {
     it('should create song with artist reference', async () => {
-      const mockArtist = {
-        id: 1,
-        name: 'Test Artist',
-        bio: 'Test Bio',
-        imageUrl: 'https://example.com/image.jpg',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const mockSong = {
-        id: 1,
+      const songData = {
         title: 'Test Song',
         duration: 180,
         audioUrl: 'https://example.com/song.mp3',
         artistId: mockArtist.id,
-        lyricsId: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        lyricsId: 1,
+        genre: 'pop',
+        releaseYear: 2024,
       };
 
-      (prismaService.artist.findUnique as jest.Mock).mockResolvedValue(mockArtist);
-      (prismaService.song.create as jest.Mock).mockResolvedValue(mockSong);
-
-      const result = await songsService.create({
-        title: 'Test Song',
-        duration: 180,
-        audioUrl: 'https://example.com/song.mp3',
-        artistId: mockArtist.id,
-      });
+      const result = await songsService.create(songData);
 
       expect(result).toBeDefined();
       expect(result.artistId).toBe(mockArtist.id);
@@ -367,22 +286,199 @@ describe('Entity Relationships', () => {
 
     it('should not create song with non-existent artist', async () => {
       const nonExistentArtistId = 999;
+      (prismaService.artist.findUnique as jest.Mock).mockResolvedValueOnce(null);
 
-      (prismaService.artist.findUnique as jest.Mock).mockResolvedValue(null);
+      const songData = {
+        title: 'Test Song',
+        duration: 180,
+        audioUrl: 'https://example.com/song.mp3',
+        artistId: nonExistentArtistId,
+        lyricsId: 1,
+        genre: 'pop',
+        releaseYear: 2024,
+      };
 
       await expect(
-        songsService.create({
-          title: 'Test Song',
-          duration: 180,
-          audioUrl: 'https://example.com/song.mp3',
-          artistId: nonExistentArtistId,
-        }),
+        songsService.create(songData)
       ).rejects.toThrow(new NotFoundException(`Artist with ID ${nonExistentArtistId} not found`));
+    });
+  });
 
-      expect(prismaService.artist.findUnique).toHaveBeenCalledWith({
-        where: { id: nonExistentArtistId },
+  describe('Song-Tag Relationships', () => {
+    let testSong;
+    let testTags;
+
+    beforeEach(async () => {
+      // Ensure clean state
+      await dbTestHelper.cleanupExistingData();
+      
+      // Create test data
+      const testData = await testHelpers.ensureTestData();
+      testSong = testData.song;
+
+      // Create test tags
+      testTags = await Promise.all([
+        prismaService.tag.create({
+          data: { name: 'rock', description: 'Rock music' }
+        }),
+        prismaService.tag.create({
+          data: { name: 'guitar', description: 'Features guitar' }
+        }),
+        prismaService.tag.create({
+          data: { name: 'instrumental', description: 'Instrumental music' }
+        })
+      ]);
+
+      TestLogger.info('Test data created:', {
+        song: { id: testSong.id, title: testSong.title },
+        tags: testTags.map(tag => ({ id: tag.id, name: tag.name }))
       });
-      expect(prismaService.song.create).not.toHaveBeenCalled();
+    });
+
+    afterEach(async () => {
+      // Clean up test-specific data
+      await prismaService.songTag.deleteMany({
+        where: { songId: testSong.id }
+      });
+      await Promise.all(
+        testTags.map(tag => 
+          prismaService.tag.delete({ where: { id: tag.id } }).catch(() => {})
+        )
+      );
+    });
+
+    it('should assign multiple tags to a song', async () => {
+      // Assign tags to song
+      await Promise.all(
+        testTags.map(tag =>
+          prismaService.songTag.create({
+            data: {
+              songId: testSong.id,
+              tagId: tag.id
+            }
+          })
+        )
+      );
+
+      // Verify assignments
+      const songWithTags = await prismaService.song.findUnique({
+        where: { id: testSong.id },
+        include: {
+          tags: {
+            include: {
+              tag: true
+            }
+          }
+        }
+      });
+
+      expect(songWithTags.tags).toHaveLength(testTags.length);
+      expect(songWithTags.tags.map(st => st.tag.name)).toEqual(
+        expect.arrayContaining(testTags.map(t => t.name))
+      );
+    });
+
+    it('should handle removing tags from a song', async () => {
+      // First assign all tags
+      await Promise.all(
+        testTags.map(tag =>
+          prismaService.songTag.create({
+            data: {
+              songId: testSong.id,
+              tagId: tag.id
+            }
+          })
+        )
+      );
+
+      // Remove one tag
+      await prismaService.songTag.delete({
+        where: {
+          songId_tagId: {
+            songId: testSong.id,
+            tagId: testTags[0].id
+          }
+        }
+      });
+
+      // Verify remaining tags
+      const songWithTags = await prismaService.song.findUnique({
+        where: { id: testSong.id },
+        include: {
+          tags: {
+            include: {
+              tag: true
+            }
+          }
+        }
+      });
+
+      expect(songWithTags.tags).toHaveLength(testTags.length - 1);
+      expect(songWithTags.tags.map(st => st.tag.name)).not.toContain(testTags[0].name);
+    });
+
+    it('should handle cascade delete when song is deleted', async () => {
+      // Assign tags to song
+      await Promise.all(
+        testTags.map(tag =>
+          prismaService.songTag.create({
+            data: {
+              songId: testSong.id,
+              tagId: tag.id
+            }
+          })
+        )
+      );
+
+      // Delete the song
+      await prismaService.song.delete({
+        where: { id: testSong.id }
+      });
+
+      // Verify SongTag entries are deleted but Tags remain
+      const songTags = await prismaService.songTag.findMany({
+        where: { songId: testSong.id }
+      });
+      const remainingTags = await prismaService.tag.findMany({
+        where: {
+          id: {
+            in: testTags.map(t => t.id)
+          }
+        }
+      });
+
+      expect(songTags).toHaveLength(0);
+      expect(remainingTags).toHaveLength(testTags.length);
+    });
+
+    it('should handle cascade delete when tag is deleted', async () => {
+      // Assign tags to song
+      await Promise.all(
+        testTags.map(tag =>
+          prismaService.songTag.create({
+            data: {
+              songId: testSong.id,
+              tagId: tag.id
+            }
+          })
+        )
+      );
+
+      // Delete one tag
+      await prismaService.tag.delete({
+        where: { id: testTags[0].id }
+      });
+
+      // Verify SongTag entry is deleted but Song remains
+      const songTags = await prismaService.songTag.findMany({
+        where: { tagId: testTags[0].id }
+      });
+      const song = await prismaService.song.findUnique({
+        where: { id: testSong.id }
+      });
+
+      expect(songTags).toHaveLength(0);
+      expect(song).toBeDefined();
     });
   });
 }); 

@@ -7,7 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 describe('Playlists E2E Tests', () => {
   let app: INestApplication;
@@ -19,12 +19,24 @@ describe('Playlists E2E Tests', () => {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
+          load: [() => ({
+            jwt: {
+              secret: 'test-secret',
+              expiresIn: '1h'
+            }
+          })]
         }),
         AppModule,
         PrismaModule,
-        JwtModule.register({
-          secret: process.env.JWT_SECRET || 'test-secret',
-          signOptions: { expiresIn: '1h' },
+        JwtModule.registerAsync({
+          imports: [ConfigModule],
+          useFactory: async (configService: ConfigService) => ({
+            secret: configService.get('jwt.secret'),
+            signOptions: { 
+              expiresIn: configService.get('jwt.expiresIn')
+            }
+          }),
+          inject: [ConfigService]
         }),
       ],
       providers: [TestHelpers],
@@ -36,15 +48,45 @@ describe('Playlists E2E Tests', () => {
     testHelpers = moduleFixture.get<TestHelpers>(TestHelpers);
     prisma = moduleFixture.get<PrismaService>(PrismaService);
 
-    await testHelpers.setupTestData();
+    await testHelpers.ensureTestData();
   });
 
   afterAll(async () => {
-    await testHelpers.cleanupDatabase();
+    await testHelpers.cleanupExistingData();
     await app.close();
   });
 
   describe('Playlist Management', () => {
+    let testPlaylist;
+
+    beforeEach(async () => {
+      // Verify and clean existing test data
+      await testHelpers.cleanupExistingData();
+      
+      // Create fresh test data
+      testPlaylist = await prisma.playlist.create({
+        data: {
+          name: 'Test Playlist',
+          userId: testHelpers.adminUser.id,
+          isPublic: true
+        }
+      });
+    });
+
+    afterEach(async () => {
+      // Clean up test-specific data
+      if (testPlaylist) {
+        await prisma.playlistSong.deleteMany({
+          where: { playlistId: testPlaylist.id }
+        });
+        await prisma.playlist.delete({
+          where: { id: testPlaylist.id }
+        }).catch(() => {
+          // Ignore if already deleted
+        });
+      }
+    });
+
     it('should create a new playlist', async () => {
       const response = await request(app.getHttpServer())
         .post('/playlists')
@@ -62,16 +104,12 @@ describe('Playlists E2E Tests', () => {
     });
 
     it('should add songs to a playlist', async () => {
-      const playlist = await prisma.playlist.create({
-        data: {
-          name: 'Test Playlist',
-          userId: testHelpers.adminUser.id,
-          isPublic: true
-        }
-      });
+      // Verify test data exists
+      expect(testPlaylist).toBeDefined();
+      expect(testHelpers.song).toBeDefined();
 
       const response = await request(app.getHttpServer())
-        .post(`/playlists/${playlist.id}/songs`)
+        .post(`/playlists/${testPlaylist.id}/songs`)
         .set('Authorization', `Bearer ${testHelpers.adminToken}`)
         .send({
           songIds: [testHelpers.song.id]
@@ -79,7 +117,7 @@ describe('Playlists E2E Tests', () => {
         .expect(201);
 
       const playlistWithSongs = await prisma.playlist.findUnique({
-        where: { id: playlist.id },
+        where: { id: testPlaylist.id },
         include: {
           songs: {
             include: {

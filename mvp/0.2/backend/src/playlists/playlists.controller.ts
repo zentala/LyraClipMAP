@@ -10,6 +10,8 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PlaylistsService } from './playlists.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -17,7 +19,9 @@ import { Prisma } from '@prisma/client';
 import { CreatePlaylistDto } from './dto/create-playlist.dto';
 import { AddSongsDto } from './dto/add-songs.dto';
 import { SharePlaylistDto } from './dto/share-playlist.dto';
+import { UpdatePlaylistDto } from './dto/update-playlist.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { PlaylistPermission } from '@prisma/client';
 
 @ApiTags('playlists')
 @Controller('playlists')
@@ -29,7 +33,7 @@ export class PlaylistsController {
   @Post()
   @ApiOperation({ summary: 'Create a new playlist' })
   @ApiResponse({ status: 201, description: 'The playlist has been successfully created.' })
-  async create(@Request() req, @Body() createPlaylistDto: CreatePlaylistDto) {
+  create(@Req() req: any, @Body() createPlaylistDto: CreatePlaylistDto) {
     return this.playlistsService.create(req.user.id, createPlaylistDto);
   }
 
@@ -48,19 +52,23 @@ export class PlaylistsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a specific playlist' })
+  @ApiOperation({ summary: 'Get a playlist by ID' })
   @ApiResponse({ status: 200, description: 'Return the playlist.' })
-  async findOne(@Request() req, @Param('id') id: string) {
-    return this.playlistsService.findOne(parseInt(id), req.user.id);
+  @ApiResponse({ status: 404, description: 'Playlist not found.' })
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.playlistsService.findOne(+id, req.user.id);
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Request() req,
-    @Body() updatePlaylistDto: Prisma.PlaylistUpdateInput,
-  ) {
-    return this.playlistsService.update(+id, req.user.id, updatePlaylistDto);
+  @ApiOperation({ summary: 'Update a playlist' })
+  @ApiResponse({ status: 200, description: 'The playlist has been successfully updated.' })
+  @ApiResponse({ status: 404, description: 'Playlist not found.' })
+  update(@Param('id') id: string, @Req() req: any, @Body() updatePlaylistDto: UpdatePlaylistDto) {
+    return this.playlistsService.update(+id, req.user.id, {
+      name: updatePlaylistDto.name,
+      description: updatePlaylistDto.description,
+      isPublic: updatePlaylistDto.isPublic,
+    });
   }
 
   @Delete(':id')
@@ -94,15 +102,16 @@ export class PlaylistsController {
   @Post(':id/share')
   @ApiOperation({ summary: 'Share a playlist with another user' })
   @ApiResponse({ status: 200, description: 'The playlist has been successfully shared.' })
-  async share(
-    @Request() req,
+  @ApiResponse({ status: 404, description: 'Playlist or user not found.' })
+  share(
     @Param('id') id: string,
+    @Req() req: any,
     @Body() sharePlaylistDto: SharePlaylistDto,
   ) {
     return this.playlistsService.share(
-      parseInt(id),
+      +id,
       req.user.id,
-      sharePlaylistDto.userId,
+      sharePlaylistDto.targetUserId,
       sharePlaylistDto.permission,
     );
   }

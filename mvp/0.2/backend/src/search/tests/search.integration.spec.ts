@@ -7,6 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule } from '@nestjs/config';
 
 describe('Search Integration Tests', () => {
   let app: INestApplication;
@@ -16,16 +17,17 @@ describe('Search Integration Tests', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+        }),
         AppModule,
         PrismaModule,
         JwtModule.register({
-          secret: 'test-secret',
+          secret: process.env.JWT_SECRET || 'test-secret',
           signOptions: { expiresIn: '1h' },
         }),
       ],
-      providers: [
-        TestHelpers,
-      ],
+      providers: [TestHelpers],
     }).compile();
 
     app = moduleFixture.createNestApplication();

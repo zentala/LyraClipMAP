@@ -10,10 +10,10 @@ export class SpotifyArtistDto {
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ description: 'Artist image URL' })
-  @IsString()
+  @ApiPropertyOptional({ description: 'Artist images' })
+  @IsArray()
   @IsOptional()
-  imageUrl?: string;
+  images?: { url: string; height: number; width: number }[];
 }
 
 export class SpotifyTrackDto {
@@ -25,36 +25,34 @@ export class SpotifyTrackDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ description: 'Artists' })
+  @ApiProperty({ description: 'Track artists' })
   @IsArray()
   artists: SpotifyArtistDto[];
 
   @ApiPropertyOptional({ description: 'Album name' })
-  @IsString()
+  @IsObject()
   @IsOptional()
-  album?: string;
+  album?: {
+    name: string;
+    images?: { url: string; height: number; width: number }[];
+    release_date?: string;
+  };
 
-  @ApiPropertyOptional({ description: 'Album image URL' })
-  @IsString()
-  @IsOptional()
-  albumImageUrl?: string;
-
-  @ApiPropertyOptional({ description: 'Duration in milliseconds' })
+  @ApiProperty({ description: 'Track duration in milliseconds' })
   @IsNumber()
-  @IsOptional()
-  durationMs?: number;
+  durationMs: number;
 
   @ApiPropertyOptional({ description: 'Preview URL' })
   @IsString()
   @IsOptional()
   previewUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Explicit content' })
+  @ApiPropertyOptional({ description: 'Whether the track is explicit' })
   @IsBoolean()
   @IsOptional()
   explicit?: boolean;
 
-  @ApiPropertyOptional({ description: 'Popularity (0-100)' })
+  @ApiPropertyOptional({ description: 'Track popularity' })
   @IsNumber()
   @IsOptional()
   popularity?: number;

@@ -7,6 +7,7 @@ import { AuthModule } from '../../auth/auth.module';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { User } from '@prisma/client';
+import { JwtModule } from '@nestjs/jwt';
 
 // Mock bcrypt
 jest.mock('bcrypt', () => ({
@@ -35,6 +36,14 @@ describe('Artists Integration Tests', () => {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
+        }),
+        JwtModule.registerAsync({
+          imports: [ConfigModule],
+          useFactory: async (configService: ConfigService) => ({
+            secret: configService.get('JWT_SECRET') || 'test-secret',
+            signOptions: { expiresIn: '1h' },
+          }),
+          inject: [ConfigService],
         }),
         ArtistsModule,
         AuthModule,

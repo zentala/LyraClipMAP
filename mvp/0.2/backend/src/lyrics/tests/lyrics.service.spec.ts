@@ -36,7 +36,7 @@ describe('LyricsService', () => {
     it('should return lyrics matching the query', async () => {
       const query = 'test query';
       const expectedResult = [
-        { id: 1, content: 'test lyrics', createdAt: new Date(), updatedAt: new Date() },
+        { id: 1, text: 'test lyrics', language: 'en', sourceUrl: 'https://example.com/lyrics', timestamps: {}, createdAt: new Date(), updatedAt: new Date() },
       ];
       mockPrismaService.lyrics.findMany.mockResolvedValue(expectedResult);
 
@@ -44,7 +44,7 @@ describe('LyricsService', () => {
       expect(result).toEqual(expectedResult);
       expect(mockPrismaService.lyrics.findMany).toHaveBeenCalledWith({
         where: {
-          content: {
+          text: {
             contains: query,
           },
         },
@@ -52,74 +52,84 @@ describe('LyricsService', () => {
     });
   });
 
-  describe('generateLRC', () => {
+  describe('createLyricsFromLrc', () => {
     it('should create lyrics with LRC content', async () => {
       const lyrics = 'test lyrics\nsecond line';
-      const timestamps = [1000, 2000];
+      const lrcContent = '[00:01.00]test lyrics\n[00:02.00]second line';
       const expectedResult = {
         id: 1,
-        content: lyrics,
-        lrc: '[00:01.00]test lyrics\n[00:02.00]second line',
-        timestamps,
+        text: lyrics,
+        timestamps: [
+          { word: 'test lyrics', timestamp: 1000 },
+          { word: 'second line', timestamp: 2000 }
+        ],
+        language: 'en',
+        sourceUrl: 'https://example.com/lyrics',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
       mockPrismaService.lyrics.create.mockResolvedValue(expectedResult);
 
-      const result = await service.generateLRC(lyrics, timestamps);
+      const result = await service.createLyricsFromLrc(lyrics, lrcContent);
       expect(result).toEqual(expectedResult);
       expect(mockPrismaService.lyrics.create).toHaveBeenCalledWith({
         data: {
-          content: lyrics,
-          lrc: '[00:01.00]test lyrics\n[00:02.00]second line',
-          timestamps,
+          text: lyrics,
+          timestamps: [
+            { word: 'test lyrics', timestamp: 1000 },
+            { word: 'second line', timestamp: 2000 }
+          ],
+          language: 'en',
+          sourceUrl: 'https://example.com/lyrics',
         },
       });
     });
 
     it('should handle empty lyrics', async () => {
       const lyrics = '';
-      const timestamps = [];
+      const lrcContent = '';
       const expectedResult = {
         id: 1,
-        content: lyrics,
-        lrc: '',
-        timestamps,
+        text: lyrics,
+        timestamps: [],
+        language: 'en',
+        sourceUrl: 'https://example.com/lyrics',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
       mockPrismaService.lyrics.create.mockResolvedValue(expectedResult);
 
-      const result = await service.generateLRC(lyrics, timestamps);
+      const result = await service.createLyricsFromLrc(lyrics, lrcContent);
       expect(result).toEqual(expectedResult);
     });
   });
 
-  describe('mapWordTimestamps', () => {
+  describe('createLyricsWithTimestamps', () => {
     it('should create lyrics with mapped timestamps', async () => {
       const lyrics = 'test lyrics';
-      const timestamps = [1000, 2000];
+      const timestamps = [
+        { word: 'test', timestamp: 1000 },
+        { word: 'lyrics', timestamp: 2000 }
+      ];
       const expectedResult = {
         id: 1,
-        content: lyrics,
-        timestamps: [
-          { word: 'test', timestamp: 1000 },
-          { word: 'lyrics', timestamp: 2000 },
-        ],
+        text: lyrics,
+        timestamps,
+        language: 'en',
+        sourceUrl: 'https://example.com/lyrics',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
       mockPrismaService.lyrics.create.mockResolvedValue(expectedResult);
 
-      const result = await service.mapWordTimestamps(lyrics, timestamps);
+      const result = await service.createLyricsWithTimestamps(lyrics, timestamps);
       expect(result).toEqual(expectedResult);
       expect(mockPrismaService.lyrics.create).toHaveBeenCalledWith({
         data: {
-          content: lyrics,
-          timestamps: [
-            { word: 'test', timestamp: 1000 },
-            { word: 'lyrics', timestamp: 2000 },
-          ],
+          text: lyrics,
+          timestamps,
+          language: 'en',
+          sourceUrl: 'https://example.com/lyrics',
         },
       });
     });
@@ -129,14 +139,16 @@ describe('LyricsService', () => {
       const timestamps = [];
       const expectedResult = {
         id: 1,
-        content: lyrics,
+        text: lyrics,
         timestamps: [],
+        language: 'en',
+        sourceUrl: 'https://example.com/lyrics',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
       mockPrismaService.lyrics.create.mockResolvedValue(expectedResult);
 
-      const result = await service.mapWordTimestamps(lyrics, timestamps);
+      const result = await service.createLyricsWithTimestamps(lyrics, timestamps);
       expect(result).toEqual(expectedResult);
     });
   });

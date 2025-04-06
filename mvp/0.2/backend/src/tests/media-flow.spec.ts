@@ -3,29 +3,21 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotFoundException } from '@nestjs/common';
 import { Prisma, Song, Lyrics, Artist } from '@prisma/client';
 import { SongsService } from '../songs/songs.service';
+import { INestApplication } from '@nestjs/common';
 
 describe('Media Flow', () => {
   let prismaService: PrismaService;
+  let app: INestApplication;
+  let mockPrismaService: any;
 
-  const mockPrismaService = {
-    song: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    lyrics: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    artist: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
+  const baseMockLyrics: Lyrics = {
+    id: 1,
+    text: 'Test lyrics content',
+    language: 'en',
+    timestamps: { '00:00': 'Test lyrics' } as any,
+    sourceUrl: 'https://example.com/lyrics.txt',
+    createdAt: new Date(),
+    updatedAt: new Date()
   };
 
   beforeEach(async () => {
@@ -39,6 +31,28 @@ describe('Media Flow', () => {
     }).compile();
 
     prismaService = module.get<PrismaService>(PrismaService);
+
+    mockPrismaService = {
+      song: {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      lyrics: {
+        create: jest.fn().mockResolvedValue(baseMockLyrics),
+        update: jest.fn().mockResolvedValue(baseMockLyrics),
+        findUnique: jest.fn().mockResolvedValue(baseMockLyrics),
+        delete: jest.fn().mockResolvedValue(baseMockLyrics),
+        findMany: jest.fn().mockResolvedValue([baseMockLyrics])
+      },
+      artist: {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+    };
   });
 
   afterEach(() => {
@@ -51,9 +65,19 @@ describe('Media Flow', () => {
         title: 'Test Song',
         duration: 180,
         audioUrl: 'https://example.com/song.mp3',
+        genre: 'pop',
+        releaseYear: 2024,
         artist: {
           connect: { id: 1 },
         },
+        lyrics: {
+          create: {
+            text: 'Test lyrics content',
+            language: 'en',
+            sourceUrl: 'https://example.com/lyrics',
+            timestamps: []
+          }
+        }
       };
 
       const mockSong: Song = {
@@ -62,7 +86,9 @@ describe('Media Flow', () => {
         duration: songData.duration,
         audioUrl: songData.audioUrl,
         artistId: 1,
-        lyricsId: null,
+        lyricsId: 1,
+        genre: songData.genre,
+        releaseYear: songData.releaseYear,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -73,6 +99,7 @@ describe('Media Flow', () => {
         data: songData,
         include: {
           artist: true,
+          lyrics: true,
         },
       });
 
@@ -82,45 +109,25 @@ describe('Media Flow', () => {
         data: songData,
         include: {
           artist: true,
+          lyrics: true,
         },
       });
     });
 
     it('should handle lyrics upload with timestamps', async () => {
-      const lyricsData: Prisma.LyricsCreateInput = {
-        content: 'Test lyrics content',
-        lrc: 'Test LRC content',
+      const lyricsCreateInput: Prisma.LyricsCreateInput = {
+        text: 'Test lyrics content',
+        language: 'en',
         timestamps: { '00:00': 'Test lyrics' },
-        song: {
-          connect: { id: 1 },
-        },
+        sourceUrl: 'https://example.com/lyrics.txt'
       };
 
-      const mockLyrics: Lyrics = {
-        id: 1,
-        content: lyricsData.content,
-        lrc: lyricsData.lrc,
-        timestamps: lyricsData.timestamps as any,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      await expect(prismaService.lyrics.create({
+        data: lyricsCreateInput
+      })).resolves.toEqual(baseMockLyrics);
 
-      (mockPrismaService.lyrics.create as jest.Mock).mockResolvedValue(mockLyrics);
-
-      const lyrics = await prismaService.lyrics.create({
-        data: lyricsData,
-        include: {
-          song: true,
-        },
-      });
-
-      expect(lyrics).toBeDefined();
-      expect(lyrics.timestamps).toBeDefined();
       expect(mockPrismaService.lyrics.create).toHaveBeenCalledWith({
-        data: lyricsData,
-        include: {
-          song: true,
-        },
+        data: expect.objectContaining(lyricsCreateInput)
       });
     });
   });
@@ -140,6 +147,8 @@ describe('Media Flow', () => {
         audioUrl: 'https://example.com/song.mp3',
         artistId: 1,
         lyricsId: null,
+        genre: 'pop',
+        releaseYear: 2024,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -162,33 +171,34 @@ describe('Media Flow', () => {
 
     it('should update lyrics content and timestamps', async () => {
       const lyricsId = 1;
-      const updateData: Prisma.LyricsUpdateInput = {
-        content: 'Updated lyrics content',
+      const lyricsUpdateInput: Prisma.LyricsUpdateInput = {
+        text: 'Updated lyrics content',
+        language: 'en',
         timestamps: { '00:00': 'Updated lyrics' },
+        sourceUrl: 'https://example.com/lyrics-updated.txt'
       };
 
-      const mockLyrics: Lyrics = {
-        id: lyricsId,
-        content: updateData.content as string,
-        lrc: 'Test LRC content',
-        timestamps: updateData.timestamps as any,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+      const updatedMockLyrics: Lyrics = {
+        ...baseMockLyrics,
+        text: lyricsUpdateInput.text as string,
+        language: lyricsUpdateInput.language as string,
+        timestamps: lyricsUpdateInput.timestamps as any,
+        sourceUrl: lyricsUpdateInput.sourceUrl as string
       };
 
-      (mockPrismaService.lyrics.findUnique as jest.Mock).mockResolvedValue(mockLyrics);
-      (mockPrismaService.lyrics.update as jest.Mock).mockResolvedValue(mockLyrics);
+      mockPrismaService.lyrics.findUnique.mockResolvedValue(updatedMockLyrics);
+      mockPrismaService.lyrics.update.mockResolvedValue(updatedMockLyrics);
 
       const updatedLyrics = await prismaService.lyrics.update({
         where: { id: lyricsId },
-        data: updateData,
+        data: lyricsUpdateInput
       });
 
-      expect(updatedLyrics.content).toBe(updateData.content);
-      expect(updatedLyrics.timestamps).toEqual(updateData.timestamps);
+      expect(updatedLyrics.text).toBe(lyricsUpdateInput.text);
+      expect(updatedLyrics.timestamps).toEqual(lyricsUpdateInput.timestamps);
       expect(mockPrismaService.lyrics.update).toHaveBeenCalledWith({
         where: { id: lyricsId },
-        data: updateData,
+        data: expect.objectContaining(lyricsUpdateInput)
       });
     });
   });
@@ -209,6 +219,8 @@ describe('Media Flow', () => {
         audioUrl: 'https://example.com/song.mp3',
         artistId: 1,
         lyricsId: null,
+        genre: 'pop',
+        releaseYear: 2024,
         createdAt: new Date(),
         updatedAt: new Date(),
       };

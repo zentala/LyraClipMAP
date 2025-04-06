@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<UIComponent id="player_pro_horizontal">
+  <Name>Pro Horizontal Lyrics Player</Name>
+  <Description>
+    A full-width immersive lyrics/audio player for power users, featuring translation, context, waveform, metadata, and karaoke view. Intended as MVP demo for stakeholder discussion.
+  </Description>
+
+  <Properties>
+    <Property name="song" type="object" required="true" description="Full song object with audio, lyrics, metadata." />
+    <Property name="progress" type="number" description="Current playback position in seconds." />
+    <Property name="duration" type="number" description="Full duration of the song." />
+    <Property name="isPlaying" type="boolean" />
+  </Properties>
+
+  <Design>
+    <WideContainer position="bottom" width="100%" background="#0e0e0e" padding="16px 32px" borderTop="1px solid #333">
+      <Row spacing="24px" align="center">
+        <!-- Album Art -->
+        <Thumbnail src="song.thumbnailUrl" size="xl" borderRadius="md" shadow="true" />
+
+        <!-- Karaoke + Metadata + Translation -->
+        <Column grow="1" spacing="6px">
+          <Row spacing="12px" align="center">
+            <Text fontSize="h6" fontWeight="bold">{{ song.title }}</Text>
+            <Text fontSize="body-2" opacity="0.7">{{ song.artist }}</Text>
+            <Tag v-if="song.bpm">{{ song.bpm }} BPM</Tag>
+            <Tag v-if="song.key">Key: {{ song.key }}</Tag>
+            <Tag outlined="true">{{ song.source }}</Tag>
+          </Row>
+
+          <!-- Karaoke Line -->
+          <SynchronizedLyricLine animated="true" fontSize="18px" transition="slide-glow">
+            <Word repeat="currentLyricWords.length" highlight="isHighlighted(wordIndex)">{{ word.text }}</Word>
+          </SynchronizedLyricLine>
+
+          <!-- Translation Line -->
+          <Text fontSize="body-2" italic="true" color="#BBBBBB" v-if="showTranslation">
+            {{ translatedLine }}
+          </Text>
+        </Column>
+
+        <!-- Waveform / Segment Progress -->
+        <Column width="320px">
+          <SegmentedWaveform
+            peaks="song.waveformPeaks"
+            markers="song.sections"
+            progress="progress"
+            duration="duration"
+            colors="[intro: '#6A1B9A', verse: '#1976D2', chorus: '#D32F2F', bridge: '#388E3C']"
+          />
+          <Text fontSize="caption" textAlign="center" color="#AAA">
+            {{ formatTime(progress) }} / {{ formatTime(duration) }}
+          </Text>
+        </Column>
+
+        <!-- Playback Controls -->
+        <PlaybackControls>
+          <IconButton icon="skip-previous" />
+          <IconButton icon="play-pause" primary="true" />
+          <IconButton icon="skip-next" />
+        </PlaybackControls>
+
+        <!-- Tools & Toggles -->
+        <Column width="180px" spacing="8px">
+          <ToggleGroup>
+            <ToggleButton icon="translate" label="Translation" toggle="true" />
+            <ToggleButton icon="text" label="Lyrics" toggle="true" />
+            <ToggleButton icon="info" label="Context" toggle="true" />
+            <ToggleButton icon="fullscreen" tooltip="Expand player" />
+          </ToggleGroup>
+
+          <!-- Visualizer Ring -->
+          <AudioVisualizer type="ring" color="#BB86FC" size="40px" />
+        </Column>
+      </Row>
+
+      <!-- Optional contextual info -->
+      <ExpansionPanel title="Context & Insights" v-if="showContext">
+        <Grid columns="2">
+          <Box>
+            <Title>Interpretation</Title>
+            <Text>
+              AI-generated insight or user-submitted meaning of the lyrics.
+            </Text>
+          </Box>
+          <Box>
+            <Title>Metadata</Title>
+            <InfoList>
+              <InfoItem label="Released">2021</InfoItem>
+              <InfoItem label="Genre">Alternative</InfoItem>
+              <InfoItem label="Length">{{ formatTime(duration) }}</InfoItem>
+              <InfoItem label="Source">{{ song.source }}</InfoItem>
+            </InfoList>
+          </Box>
+        </Grid>
+      </ExpansionPanel>
+    </WideContainer>
+  </Design>
+</UIComponent>

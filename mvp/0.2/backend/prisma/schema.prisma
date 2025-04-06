@@ -8,27 +8,27 @@ datasource db {
 }
 
 model User {
-  id            Int             @id @default(autoincrement())
-  email         String          @unique
-  password      String
-  username      String          @unique
-  role          UserRole        @default(USER)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  preferences   UserPreferences?
-  playlists     Playlist[]
+  id              Int              @id @default(autoincrement())
+  email           String           @unique
+  password        String
+  username        String           @unique
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  role            UserRole         @default(USER)
+  playlists       Playlist[]
   sharedPlaylists PlaylistShare[]
+  preferences     UserPreferences?
 }
 
 model UserPreferences {
-  id              Int      @id @default(autoincrement())
-  userId          Int      @unique
-  user            User     @relation(fields: [userId], references: [id])
-  theme           String   @default("light")
-  language        String   @default("en")
-  notifications   Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  userId        Int      @unique
+  theme         String   @default("light")
+  language      String   @default("en")
+  notifications Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id])
 }
 
 model TextContent {
@@ -41,89 +41,102 @@ model TextContent {
 }
 
 model Lyrics {
-  id         Int       @id @default(autoincrement())
-  content    String    @db.Text
-  language   String
-  sourceUrl  String
+  id         Int      @id @default(autoincrement())
   timestamps Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  language   String
+  sourceUrl  String?
+  text       String
   songs      Song[]
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
 }
 
 model Artist {
-  id          Int      @id @default(autoincrement())
-  name        String
-  bio         String?
-  imageUrl    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  songs       Song[]
+  id        Int      @id @default(autoincrement())
+  name      String
+  bio       String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  songs     Song[]
 }
 
 model Song {
-  id          Int      @id @default(autoincrement())
+  id          Int            @id @default(autoincrement())
   title       String
-  artist      Artist   @relation(fields: [artistId], references: [id])
   artistId    Int
   duration    Int
-  audioUrl    String
-  lyrics      Lyrics?  @relation(fields: [lyricsId], references: [id])
-  lyricsId    Int?
-  genre       String?
-  releaseYear Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  lyricsId    Int
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  genre       String
+  releaseYear Int
+  audioUrl    String?
   playlists   PlaylistSong[]
+  artist      Artist         @relation(fields: [artistId], references: [id])
+  lyrics      Lyrics         @relation(fields: [lyricsId], references: [id])
   tags        SongTag[]
 }
 
 model Playlist {
-  id            Int             @id @default(autoincrement())
-  name          String
-  description   String?
-  isPublic      Boolean         @default(false)
-  userId        Int
-  user          User            @relation(fields: [userId], references: [id])
-  songs         PlaylistSong[]
-  shares        PlaylistShare[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id          Int             @id @default(autoincrement())
+  name        String
+  description String?
+  isPublic    Boolean         @default(false)
+  userId      Int
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  user        User            @relation(fields: [userId], references: [id])
+  shares      PlaylistShare[]
+  songs       PlaylistSong[]
 }
 
 model PlaylistSong {
-  id          Int      @id @default(autoincrement())
-  playlistId  Int
-  playlist    Playlist @relation(fields: [playlistId], references: [id])
-  songId      Int
-  song        Song     @relation(fields: [songId], references: [id])
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  playlistId Int
+  songId     Int
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  playlist   Playlist @relation(fields: [playlistId], references: [id])
+  song       Song     @relation(fields: [songId], references: [id])
 
   @@unique([playlistId, songId])
 }
 
 model Tag {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
   description String?
   category    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   songs       SongTag[]
 }
 
 model SongTag {
   id        Int      @id @default(autoincrement())
   songId    Int
-  song      Song     @relation(fields: [songId], references: [id])
   tagId     Int
-  tag       Tag      @relation(fields: [tagId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  song      Song     @relation(fields: [songId], references: [id])
+  tag       Tag      @relation(fields: [tagId], references: [id])
 
   @@unique([songId, tagId])
+}
+
+model PlaylistShare {
+  id         Int                @id @default(autoincrement())
+  playlistId Int
+  userId     Int
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  permission PlaylistPermission
+  playlist   Playlist           @relation(fields: [playlistId], references: [id])
+  user       User               @relation(fields: [userId], references: [id])
+
+  @@unique([playlistId, userId])
 }
 
 enum PlaylistPermission {
@@ -131,21 +144,8 @@ enum PlaylistPermission {
   EDIT
 }
 
-model PlaylistShare {
-  id          Int               @id @default(autoincrement())
-  playlistId  Int
-  playlist    Playlist          @relation(fields: [playlistId], references: [id])
-  userId      Int
-  user        User              @relation(fields: [userId], references: [id])
-  permission  PlaylistPermission
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  @@unique([playlistId, userId])
-}
-
 enum UserRole {
   USER
   ADMIN
   MODERATOR
-} 
+}

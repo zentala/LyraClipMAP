@@ -10,19 +10,25 @@ export class CreateSongDto {
   @IsNumber()
   artistId: number;
 
-  @ApiPropertyOptional({ description: 'Duration in seconds' })
-  @IsOptional()
+  @ApiProperty({ description: 'Duration in seconds' })
   @IsNumber()
   @Min(0)
-  duration?: number;
+  duration: number;
+
+  @ApiProperty({ description: 'Lyrics ID' })
+  @IsNumber()
+  lyricsId: number;
+
+  @ApiProperty({ description: 'Genre' })
+  @IsString()
+  genre: string;
+
+  @ApiProperty({ description: 'Release year' })
+  @IsNumber()
+  releaseYear: number;
 
   @ApiPropertyOptional({ description: 'Audio URL' })
   @IsOptional()
   @IsUrl()
   audioUrl?: string;
-
-  @ApiPropertyOptional({ description: 'Lyrics ID' })
-  @IsOptional()
-  @IsNumber()
-  lyricsId?: number;
 } 

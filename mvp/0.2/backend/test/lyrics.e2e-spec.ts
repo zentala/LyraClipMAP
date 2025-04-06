@@ -31,8 +31,9 @@ describe('LyricsController (e2e)', () => {
       // Najpierw utwórz testowe dane
       await prismaService.lyrics.create({
         data: {
-          content: 'test lyrics content',
+          text: 'test lyrics content',
           timestamps: [],
+          language: 'en',
         },
       });
 
@@ -44,8 +45,8 @@ describe('LyricsController (e2e)', () => {
           expect(Array.isArray(res.body)).toBe(true);
           expect(res.body.length).toBeGreaterThan(0);
           expect(res.body[0]).toHaveProperty('id');
-          expect(res.body[0]).toHaveProperty('content');
-          expect(res.body[0].content).toContain('test lyrics');
+          expect(res.body[0]).toHaveProperty('text');
+          expect(res.body[0].text).toContain('test lyrics');
           expect(res.body[0]).toHaveProperty('createdAt');
           expect(res.body[0]).toHaveProperty('updatedAt');
         });
@@ -76,7 +77,7 @@ describe('LyricsController (e2e)', () => {
         .expect(201)
         .expect((res) => {
           expect(res.body).toHaveProperty('id');
-          expect(res.body.content).toBe(data.lyrics);
+          expect(res.body.text).toBe(data.lyrics);
           expect(res.body.lrc).toBe('[00:01.00]test lyrics\n[00:02.00]second line');
           expect(res.body.timestamps).toEqual(data.timestamps);
           expect(res.body).toHaveProperty('createdAt');
@@ -96,7 +97,7 @@ describe('LyricsController (e2e)', () => {
         .expect(201)
         .expect((res) => {
           expect(res.body).toHaveProperty('id');
-          expect(res.body.content).toBe('');
+          expect(res.body.text).toBe('');
           expect(res.body.lrc).toBe('');
           expect(res.body.timestamps).toEqual([]);
         });
@@ -116,7 +117,7 @@ describe('LyricsController (e2e)', () => {
         .expect(201)
         .expect((res) => {
           expect(res.body).toHaveProperty('id');
-          expect(res.body.content).toBe(data.lyrics);
+          expect(res.body.text).toBe(data.lyrics);
           expect(res.body.timestamps).toEqual([
             { word: 'test', timestamp: 1000 },
             { word: 'lyrics', timestamp: 2000 },

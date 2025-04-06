@@ -770,3 +770,46 @@ find ./src -type f -name "*.ts" -exec sed -i 's/{ title: string, artistId: numbe
 - Tests passing with proper JWT auth
 - Consistent test data structure
 - Clean database state between tests
+
+# TypeScript Errors Fix Plan
+
+## 1. Lyrics Model Issues
+- [ ] Update `LyricsCreateInput` type in `backend/src/types/prisma-extensions.ts` to match Prisma schema
+- [ ] Replace all occurrences of `content` with `text` in:
+  - `backend/src/tests/db-test.helper.ts`
+  - `backend/src/tests/entity-relationships.spec.ts`
+  - `backend/src/lyrics/tests/lyrics.service.spec.ts`
+- [ ] Update `LyricsExtended` interface to use `text` instead of `content`
+
+## 2. Song Model Issues
+- [ ] Add missing required fields (`genre` and `releaseYear`) to Song mocks in:
+  - `backend/src/songs/tests/songs.service.spec.ts`
+  - `backend/src/tests/entity-relationships.spec.ts`
+  - `backend/src/tests/media-flow.spec.ts`
+- [ ] Update `CreateSongDto` usage to include all required fields
+
+## 3. Playlist Service Issues
+- [ ] Fix import in `backend/src/playlists/tests/playlists.service.spec.ts`:
+  - Change `PlaylistService` to `PlaylistsService`
+
+## 4. Spotify Service Issues
+- [ ] Fix type conversion in `backend/src/spotify/spotify.service.ts`:
+  - Convert `artistId` from string to number
+  - Remove invalid fields (`spotifyId`, `value`) from create operations
+
+## 5. Jest Mock Issues
+- [ ] Add proper type definitions for jest mocks in:
+  - `backend/src/tests/entity-relationships.spec.ts`
+  - Use `jest.mocked()` or proper type assertions
+
+## 6. Lyrics Controller Issues
+- [ ] Update `backend/src/lyrics/lyrics.controller.ts` to use new method names:
+  - Replace `generateLRC` with `createLyricsFromLrc`
+  - Replace `mapWordTimestamps` with `createLyricsWithTimestamps`
+
+## Implementation Order:
+1. Fix base types and interfaces first
+2. Update service implementations
+3. Update tests to match new types
+4. Fix mock implementations
+5. Run tests and verify fixes

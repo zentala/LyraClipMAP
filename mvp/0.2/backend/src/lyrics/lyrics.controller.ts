@@ -1,28 +1,28 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { LyricsService } from './lyrics.service';
 
 @Controller('lyrics')
 export class LyricsController {
   constructor(private readonly lyricsService: LyricsService) {}
 
-  @Get('search')
-  async searchLyrics(@Query('q') query: string) {
+  @Post('search')
+  async searchLyrics(@Body('query') query: string) {
     return this.lyricsService.searchLyrics(query);
   }
 
-  @Post('generate-lrc')
-  async generateLRC(
+  @Post('lrc')
+  async createLyricsFromLrc(
     @Body('lyrics') lyrics: string,
-    @Body('timestamps') timestamps: number[],
+    @Body('lrcContent') lrcContent: string,
   ) {
-    return this.lyricsService.generateLRC(lyrics, timestamps);
+    return this.lyricsService.createLyricsFromLrc(lyrics, lrcContent);
   }
 
-  @Post('map-timestamps')
-  async mapWordTimestamps(
+  @Post('timestamps')
+  async createLyricsWithTimestamps(
     @Body('lyrics') lyrics: string,
-    @Body('timestamps') timestamps: number[],
+    @Body('timestamps') timestamps: { word: string; timestamp: number }[],
   ) {
-    return this.lyricsService.mapWordTimestamps(lyrics, timestamps);
+    return this.lyricsService.createLyricsWithTimestamps(lyrics, timestamps);
   }
 } 

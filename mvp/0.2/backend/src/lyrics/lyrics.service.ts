@@ -3,59 +3,73 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class LyricsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {}
+
+  private parseLrcToTimestamps(lrcContent: string): { word: string; timestamp: number }[] {
+    const lines = lrcContent.split('\n');
+    const timestamps: { word: string; timestamp: number }[] = [];
+
+    lines.forEach(line => {
+      const match = line.match(/\[(\d{2}):(\d{2}\.\d{2})\](.*)/);
+      if (match) {
+        const minutes = parseInt(match[1]);
+        const seconds = parseFloat(match[2]);
+        const text = match[3].trim();
+        const timestamp = minutes * 60 * 1000 + seconds * 1000;
+
+        if (text) {
+          timestamps.push({ word: text, timestamp });
+        }
+      }
+    });
+
+    return timestamps;
+  }
 
   async searchLyrics(query: string) {
     return this.prisma.lyrics.findMany({
       where: {
-        content: {
+        text: {
           contains: query,
         },
       },
     });
   }
 
-  async generateLRC(lyrics: string, timestamps: number[]) {
-    const lines = lyrics.split('\n');
-    const lrcLines = [];
-    
-    // Zakładamy, że każda linia ma odpowiadający jej timestamp
-    for (let i = 0; i < Math.min(lines.length, timestamps.length); i++) {
-      const time = new Date(timestamps[i]);
-      const minutes = time.getUTCMinutes().toString().padStart(2, '0');
-      const seconds = time.getUTCSeconds().toString().padStart(2, '0');
-      const milliseconds = Math.floor(time.getUTCMilliseconds() / 10).toString().padStart(2, '0');
-      
-      lrcLines.push(`[${minutes}:${seconds}.${milliseconds}]${lines[i].trim()}`);
-    }
-    
-    const lrcContent = lrcLines.join('\n');
-    
+  async createLyricsFromText(lyrics: string) {
     return this.prisma.lyrics.create({
       data: {
-        content: lyrics,
-        lrc: lrcContent,
-        timestamps: timestamps,
+        text: lyrics,
+        timestamps: [],
+        language: 'en',
+        sourceUrl: 'https://example.com/lyrics',
       },
     });
   }
 
-  async mapWordTimestamps(lyrics: string, timestamps: number[]) {
-    const words = lyrics.split(/\s+/);
-    const mappedTimestamps = [];
-    
-    // Zakładamy, że każde słowo ma odpowiadający mu timestamp
-    for (let i = 0; i < Math.min(words.length, timestamps.length); i++) {
-      mappedTimestamps.push({
-        word: words[i],
-        timestamp: timestamps[i],
-      });
-    }
-    
+  async createLyricsFromLrc(lyrics: string, lrcContent: string) {
     return this.prisma.lyrics.create({
       data: {
-        content: lyrics,
+        text: lyrics,
+        timestamps: this.parseLrcToTimestamps(lrcContent),
+        language: 'en',
+        sourceUrl: 'https://example.com/lyrics',
+      },
+    });
+  }
+
+  async createLyricsWithTimestamps(lyrics: string, timestamps: { word: string; timestamp: number }[]) {
+    const mappedTimestamps = timestamps.map(({ word, timestamp }) => ({
+      word,
+      timestamp,
+    }));
+
+    return this.prisma.lyrics.create({
+      data: {
+        text: lyrics,
         timestamps: mappedTimestamps,
+        language: 'en',
+        sourceUrl: 'https://example.com/lyrics',
       },
     });
   }

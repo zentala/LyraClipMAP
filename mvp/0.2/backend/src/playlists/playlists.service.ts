@@ -1,39 +1,39 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePlaylistDto } from './dto/create-playlist.dto';
-import { Playlist, PlaylistPermission } from '@prisma/client';
+import { PlaylistPermission } from '@prisma/client';
 
 @Injectable()
 export class PlaylistsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: number, createPlaylistDto: CreatePlaylistDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
     return this.prisma.playlist.create({
       data: {
         ...createPlaylistDto,
         userId,
-      },
-      include: {
-        songs: {
-          include: {
-            song: true
-          }
-        }
       }
     });
   }
 
   async findAllByUserId(userId: number) {
     return this.prisma.playlist.findMany({
-      where: {
-        userId,
-      },
+      where: { userId },
       include: {
         songs: {
           include: {
             song: true
           }
-        }
+        },
+        shares: true
       }
     });
   }
@@ -56,14 +56,9 @@ export class PlaylistsService {
 
   async findOne(id: number, userId: number) {
     const playlist = await this.prisma.playlist.findUnique({
-      where: { id },
-      include: {
-        songs: {
-          include: {
-            song: true
-          }
-        },
-        user: true,
+      where: { id, userId },
+      include: { 
+        songs: true,
         shares: true
       }
     });
@@ -72,20 +67,17 @@ export class PlaylistsService {
       throw new NotFoundException(`Playlist with ID ${id} not found`);
     }
 
-    if (!playlist.isPublic && playlist.userId !== userId) {
-      const hasAccess = playlist.shares.some(share => share.userId === userId);
-      if (!hasAccess) {
-        throw new ForbiddenException('You do not have access to this playlist');
-      }
-    }
-
     return playlist;
   }
 
   async update(
     id: number,
     userId: number,
-    updatePlaylistDto: Prisma.PlaylistUpdateInput,
+    updatePlaylistDto: {
+      name?: string;
+      description?: string;
+      isPublic?: boolean;
+    },
   ) {
     const playlist = await this.prisma.playlist.findUnique({
       where: { id, userId },
@@ -142,7 +134,16 @@ export class PlaylistsService {
   }
 
   async removeSong(playlistId: number, userId: number, songId: number) {
-    const playlist = await this.findOne(playlistId, userId);
+    const playlist = await this.prisma.playlist.findUnique({
+      where: { id: playlistId },
+      include: {
+        shares: true
+      }
+    });
+
+    if (!playlist) {
+      throw new NotFoundException(`Playlist with ID ${playlistId} not found`);
+    }
 
     if (playlist.userId !== userId) {
       const hasEditAccess = playlist.shares.some(
@@ -154,10 +155,23 @@ export class PlaylistsService {
       }
     }
 
-    await this.prisma.playlistSong.deleteMany({
+    const songInPlaylist = await this.prisma.playlistSong.findMany({
       where: {
         playlistId,
-        songId,
+        songId
+      }
+    });
+
+    if (!songInPlaylist.length) {
+      throw new NotFoundException(`Song with ID ${songId} not found in playlist ${playlistId}`);
+    }
+
+    await this.prisma.playlistSong.delete({
+      where: {
+        playlistId_songId: {
+          playlistId,
+          songId
+        }
       }
     });
 

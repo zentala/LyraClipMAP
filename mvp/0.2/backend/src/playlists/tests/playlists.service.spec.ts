@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PlaylistService } from '../playlists.service';
+import { PlaylistsService } from '../playlists.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { PlaylistPermission } from '@prisma/client';
 
-describe('PlaylistService', () => {
-  let service: PlaylistService;
+describe('PlaylistsService', () => {
+  let service: PlaylistsService;
   let prismaService: PrismaService;
 
   const mockPrismaService = {
@@ -18,22 +18,31 @@ describe('PlaylistService', () => {
     },
     playlistSong: {
       create: jest.fn(),
-      findMany: jest.fn(),
-      delete: jest.fn(),
+      createMany: jest.fn(),
       deleteMany: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     },
     song: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
     user: {
       findUnique: jest.fn(),
+    },
+    playlistShare: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     },
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        PlaylistService,
+        PlaylistsService,
         {
           provide: PrismaService,
           useValue: mockPrismaService,
@@ -41,7 +50,7 @@ describe('PlaylistService', () => {
       ],
     }).compile();
 
-    service = module.get<PlaylistService>(PlaylistService);
+    service = module.get<PlaylistsService>(PlaylistsService);
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
@@ -104,14 +113,14 @@ describe('PlaylistService', () => {
     });
   });
 
-  describe('findAll', () => {
+  describe('findAllByUserId', () => {
     it('should return all playlists for a user', async () => {
       const userId = 1;
       const mockPlaylists = [
         {
           id: 1,
-          name: 'Playlist 1',
-          description: 'Description 1',
+          name: 'Test Playlist 1',
+          description: 'Test Description 1',
           isPublic: true,
           userId,
           createdAt: new Date(),
@@ -119,8 +128,8 @@ describe('PlaylistService', () => {
         },
         {
           id: 2,
-          name: 'Playlist 2',
-          description: 'Description 2',
+          name: 'Test Playlist 2',
+          description: 'Test Description 2',
           isPublic: false,
           userId,
           createdAt: new Date(),
@@ -130,12 +139,19 @@ describe('PlaylistService', () => {
 
       mockPrismaService.playlist.findMany.mockResolvedValue(mockPlaylists);
 
-      const result = await service.findAll(userId);
+      const result = await service.findAllByUserId(userId);
 
       expect(result).toEqual(mockPlaylists);
       expect(mockPrismaService.playlist.findMany).toHaveBeenCalledWith({
         where: { userId },
-        include: { songs: true },
+        include: {
+          songs: {
+            include: {
+              song: true,
+            },
+          },
+          shares: true,
+        },
       });
     });
   });
@@ -144,15 +160,7 @@ describe('PlaylistService', () => {
     it('should return a playlist by id', async () => {
       const playlistId = 1;
       const userId = 1;
-      const mockPlaylist = {
-        id: playlistId,
-        name: 'Test Playlist',
-        description: 'Test Description',
-        isPublic: true,
-        userId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const mockPlaylist = { id: playlistId, name: 'Test Playlist', userId };
 
       mockPrismaService.playlist.findUnique.mockResolvedValue(mockPlaylist);
 
@@ -161,7 +169,10 @@ describe('PlaylistService', () => {
       expect(result).toEqual(mockPlaylist);
       expect(mockPrismaService.playlist.findUnique).toHaveBeenCalledWith({
         where: { id: playlistId, userId },
-        include: { songs: true },
+        include: { 
+          songs: true,
+          shares: true 
+        },
       });
     });
 
